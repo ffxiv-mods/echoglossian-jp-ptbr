@@ -1,9 +1,9 @@
 # Builds the EchoglossianJP fork and, on manual dispatch, publishes a GitHub
 # release plus the repo.json consumed by Dalamud's "Custom Plugin Repositories".
 #
-# - push: builds and uploads latest.zip as a workflow artifact only.
-# - workflow_dispatch: builds, creates the release v<version> with latest.zip,
-#   and commits repo.json to the dispatched branch. Add this URL in Dalamud:
+# Every push to the listed branches (and every manual dispatch) builds the
+# plugin, creates the release v<version> with latest.zip, and commits repo.json
+# to that branch. Add this URL in Dalamud:
 #   https://raw.githubusercontent.com/<owner>/<repo>/<branch>/repo.json
 name: Build and publish custom repo
 
@@ -107,7 +107,6 @@ jobs:
           path: ${{ steps.package.outputs.zip }}
 
       - name: Create GitHub release
-        if: github.event_name == 'workflow_dispatch'
         shell: pwsh
         env:
           GH_TOKEN: ${{ github.token }}
@@ -119,7 +118,6 @@ jobs:
             --notes "Build of ${{ github.ref_name }} at ${{ github.sha }}."
 
       - name: Update repo.json
-        if: github.event_name == 'workflow_dispatch'
         shell: pwsh
         run: |
           $manifest = Get-Content '${{ steps.package.outputs.manifest }}' -Raw -Encoding utf8 | ConvertFrom-Json
