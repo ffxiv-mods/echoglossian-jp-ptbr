@@ -122,14 +122,34 @@ public unsafe partial class Echoglossian
         var existingRow = this.FindTrait(originalRow) ?? originalRow;
         this.InsertTrait(originalRow);
 
+        TraitCanonicalPayload? japanesePayload = null;
+        SourceClientLanguage? japaneseSource = null;
+        if (this.SourceTextLanguagePolicy.TryGetAlternateSource(
+                sourceLanguage,
+                LangDict[LanguageInt].Code,
+                out var alternateSource) &&
+            TryBuildTraitCanonicalPayload(
+                traitId,
+                currentClassJobId,
+                ClientLanguage.Japanese,
+                out var alternatePayload))
+        {
+            japanesePayload = alternatePayload;
+            japaneseSource = alternateSource;
+        }
+
         this.PrefetchTraitDetailName(
             originalPayload,
             existingRow,
-            sourceLanguage);
+            sourceLanguage,
+            japanesePayload?.Name,
+            japaneseSource);
         this.PrefetchTraitDetailDescription(
             originalPayload,
             existingRow,
-            sourceLanguage);
+            sourceLanguage,
+            japanesePayload?.Description,
+            japaneseSource);
     }
 
     /// <summary>
@@ -138,10 +158,14 @@ public unsafe partial class Echoglossian
     /// <param name="originalPayload">The canonical original payload.</param>
     /// <param name="existingRow">The currently persisted row, if any.</param>
     /// <param name="sourceLanguage">The resolved source language.</param>
+    /// <param name="japaneseName">The Japanese text, if resolved.</param>
+    /// <param name="japaneseSource">The Japanese source language, if it applies.</param>
     private void PrefetchTraitDetailName(
         TraitCanonicalPayload originalPayload,
         Trait existingRow,
-        SourceClientLanguage sourceLanguage)
+        SourceClientLanguage sourceLanguage,
+        string? japaneseName,
+        SourceClientLanguage? japaneseSource)
     {
         if (string.IsNullOrWhiteSpace(originalPayload.Name) ||
             !string.IsNullOrWhiteSpace(existingRow.TranslatedTraitName))
@@ -165,11 +189,13 @@ public unsafe partial class Echoglossian
 
         this.QueueTranslation(
             translationKey,
-            () => TranslationService.Translate(
+            () => TranslatePrefetchPreferringAlternate(
                 originalPayload.Name,
                 sourceLanguage,
+                japaneseName,
+                japaneseSource,
                 LangDict[LanguageInt].Code,
-                originContext: BuildTraitDetailOriginContext(
+                BuildTraitDetailOriginContext(
                     originalPayload,
                     "Name")),
             translatedName => this.ApplyTraitDetailTranslation(
@@ -185,10 +211,14 @@ public unsafe partial class Echoglossian
     /// <param name="originalPayload">The canonical original payload.</param>
     /// <param name="existingRow">The currently persisted row, if any.</param>
     /// <param name="sourceLanguage">The resolved source language.</param>
+    /// <param name="japaneseDescription">The Japanese text, if resolved.</param>
+    /// <param name="japaneseSource">The Japanese source language, if it applies.</param>
     private void PrefetchTraitDetailDescription(
         TraitCanonicalPayload originalPayload,
         Trait existingRow,
-        SourceClientLanguage sourceLanguage)
+        SourceClientLanguage sourceLanguage,
+        string? japaneseDescription,
+        SourceClientLanguage? japaneseSource)
     {
         if (string.IsNullOrWhiteSpace(originalPayload.Description) ||
             StructuredTooltipTranslationValidation
@@ -215,11 +245,13 @@ public unsafe partial class Echoglossian
 
         this.QueueTranslation(
             translationKey,
-            () => TranslationService.Translate(
+            () => TranslatePrefetchPreferringAlternate(
                 originalPayload.Description,
                 sourceLanguage,
+                japaneseDescription,
+                japaneseSource,
                 LangDict[LanguageInt].Code,
-                originContext: BuildTraitDetailOriginContext(
+                BuildTraitDetailOriginContext(
                     originalPayload,
                     "Description")),
             translatedDescription => this.ApplyTraitDetailTranslation(
@@ -431,13 +463,34 @@ public unsafe partial class Echoglossian
         byte currentClassJobId,
         out TraitCanonicalPayload payload)
     {
+        return TryBuildTraitCanonicalPayload(
+            traitId,
+            currentClassJobId,
+            ClientStateInterface.ClientLanguage,
+            out payload);
+    }
+
+    /// <summary>
+    ///     Tries to build one canonical trait payload from sheets in one
+    ///     game-data language.
+    /// </summary>
+    /// <param name="traitId">The trait row identifier.</param>
+    /// <param name="currentClassJobId">The current class-job identifier.</param>
+    /// <param name="language">The game-data language to read.</param>
+    /// <param name="payload">The resolved payload.</param>
+    /// <returns>True when the payload resolved successfully.</returns>
+    private static bool TryBuildTraitCanonicalPayload(
+        uint traitId,
+        byte currentClassJobId,
+        ClientLanguage language,
+        out TraitCanonicalPayload payload)
+    {
         payload = new TraitCanonicalPayload();
 
         var traitSheet =
-            DManager.GetExcelSheet<TraitSheet>(ClientStateInterface.ClientLanguage);
+            DManager.GetExcelSheet<TraitSheet>(language);
         var traitTransientSheet =
-            DManager.GetExcelSheet<TraitTransientSheet>(
-                ClientStateInterface.ClientLanguage);
+            DManager.GetExcelSheet<TraitTransientSheet>(language);
         if (traitSheet == null ||
             traitTransientSheet == null ||
             !traitSheet.TryGetRow(traitId, out var traitRow))
@@ -446,7 +499,7 @@ public unsafe partial class Echoglossian
         }
 
         var description = traitTransientSheet.TryGetRow(traitId, out var transientRow)
-            ? EvaluateSheetText(transientRow.Description)
+            ? EvaluateSheetText(transientRow.Description, language)
             : string.Empty;
         payload = new TraitCanonicalPayload
         {

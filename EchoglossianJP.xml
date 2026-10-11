@@ -4903,7 +4903,7 @@
             <param name="actionId">The action row identifier.</param>
             <param name="currentClassJobId">The current class-job identifier.</param>
         </member>
-        <member name="M:Echoglossian.Echoglossian.PrefetchActionDetailDescription(Echoglossian.NativeUI.Helpers.ActionTooltipCanonicalPayload,Echoglossian.EFCoreSqlite.Models.ActionTooltip,Echoglossian.SourceClientLanguage,Echoglossian.TranslationReuseScope)">
+        <member name="M:Echoglossian.Echoglossian.PrefetchActionDetailDescription(Echoglossian.NativeUI.Helpers.ActionTooltipCanonicalPayload,Echoglossian.EFCoreSqlite.Models.ActionTooltip,Echoglossian.SourceClientLanguage,Echoglossian.TranslationReuseScope,System.String,System.Nullable{Echoglossian.SourceClientLanguage})">
             <summary>
                 Prefetches the translated action description when it is not yet persisted.
             </summary>
@@ -4911,6 +4911,8 @@
             <param name="existingRow">The currently persisted row, if any.</param>
             <param name="sourceLanguage">The resolved source language.</param>
             <param name="scope">The immutable operation reuse scope.</param>
+            <param name="japaneseDescription">The Japanese description, if resolved.</param>
+            <param name="japaneseSource">The Japanese source language, if it applies.</param>
         </member>
         <member name="M:Echoglossian.Echoglossian.ApplyActionDetailTranslation(System.UInt32,System.UInt32,Echoglossian.TranslationReuseScope,System.String,System.String)">
             <summary>
@@ -5101,12 +5103,24 @@
             <param name="payload">The resolved payload.</param>
             <returns>True when the payload resolved successfully.</returns>
         </member>
-        <member name="M:Echoglossian.Echoglossian.EvaluateSheetText(Lumina.Text.ReadOnly.ReadOnlySeString)">
+        <member name="M:Echoglossian.Echoglossian.TryBuildActionTooltipCanonicalPayload(System.UInt32,System.Byte,Dalamud.Game.ClientLanguage,Echoglossian.NativeUI.Helpers.ActionTooltipCanonicalPayload@)">
+            <summary>
+                Tries to build one canonical action-tooltip payload from sheets in
+                one game-data language.
+            </summary>
+            <param name="actionId">The action row identifier.</param>
+            <param name="currentClassJobId">The current class-job identifier.</param>
+            <param name="language">The game-data language to read.</param>
+            <param name="payload">The resolved payload.</param>
+            <returns>True when the payload resolved successfully.</returns>
+        </member>
+        <member name="M:Echoglossian.Echoglossian.EvaluateSheetText(Lumina.Text.ReadOnly.ReadOnlySeString,System.Nullable{Dalamud.Game.ClientLanguage})">
             <summary>
                 Evaluates one sheet-backed SeString before extracting visible text,
                 so transient descriptions with macros do not lose numeric values.
             </summary>
             <param name="text">The raw sheet text.</param>
+            <param name="language">The game-data language; defaults to the client language.</param>
             <returns>The evaluated visible text.</returns>
         </member>
         <member name="M:Echoglossian.Echoglossian.TryGetCurrentClassJobId(System.Byte@)">
@@ -5892,12 +5906,13 @@
             <param name="visibleText">The current visible node text.</param>
             <returns>The evaluated source text, or the visible fallback text.</returns>
         </member>
-        <member name="M:Echoglossian.Echoglossian.EvaluateStructuredTooltipSourceText(Lumina.Text.ReadOnly.ReadOnlySeStringSpan)">
+        <member name="M:Echoglossian.Echoglossian.EvaluateStructuredTooltipSourceText(Lumina.Text.ReadOnly.ReadOnlySeStringSpan,System.Nullable{Dalamud.Game.ClientLanguage})">
             <summary>
                 Evaluates one structured-tooltip source SeString with the same
                 runtime service used when ActionDetail sheet payloads are captured.
             </summary>
             <param name="sourceText">The original source SeString.</param>
+            <param name="language">The game-data language; defaults to the client language.</param>
             <returns>The evaluated visible text, or extracted source text on failure.</returns>
         </member>
         <member name="M:Echoglossian.Echoglossian.DoesStructuredTooltipNodeMatchTarget(FFXIVClientStructs.FFXIV.Component.GUI.AtkTextNode*,System.String)">
@@ -6527,21 +6542,25 @@
             </summary>
             <param name="itemId">The item row identifier.</param>
         </member>
-        <member name="M:Echoglossian.Echoglossian.PrefetchItemDetailName(Echoglossian.NativeUI.Helpers.ItemTooltipCanonicalPayload,Echoglossian.EFCoreSqlite.Models.ItemTooltip,Echoglossian.SourceClientLanguage)">
+        <member name="M:Echoglossian.Echoglossian.PrefetchItemDetailName(Echoglossian.NativeUI.Helpers.ItemTooltipCanonicalPayload,Echoglossian.EFCoreSqlite.Models.ItemTooltip,Echoglossian.SourceClientLanguage,System.String,System.Nullable{Echoglossian.SourceClientLanguage})">
             <summary>
                 Prefetches the translated item name when it is not yet persisted.
             </summary>
             <param name="originalPayload">The canonical original payload.</param>
             <param name="existingRow">The currently persisted row, if any.</param>
             <param name="sourceLanguage">The resolved source language.</param>
+            <param name="japaneseName">The Japanese name, if resolved.</param>
+            <param name="japaneseSource">The Japanese source language, if it applies.</param>
         </member>
-        <member name="M:Echoglossian.Echoglossian.PrefetchItemDetailDescription(Echoglossian.NativeUI.Helpers.ItemTooltipCanonicalPayload,Echoglossian.EFCoreSqlite.Models.ItemTooltip,Echoglossian.SourceClientLanguage)">
+        <member name="M:Echoglossian.Echoglossian.PrefetchItemDetailDescription(Echoglossian.NativeUI.Helpers.ItemTooltipCanonicalPayload,Echoglossian.EFCoreSqlite.Models.ItemTooltip,Echoglossian.SourceClientLanguage,System.String,System.Nullable{Echoglossian.SourceClientLanguage})">
             <summary>
                 Prefetches the translated item description when it is not yet persisted.
             </summary>
             <param name="originalPayload">The canonical original payload.</param>
             <param name="existingRow">The currently persisted row, if any.</param>
             <param name="sourceLanguage">The resolved source language.</param>
+            <param name="japaneseDescription">The Japanese description, if resolved.</param>
+            <param name="japaneseSource">The Japanese source language, if it applies.</param>
         </member>
         <member name="M:Echoglossian.Echoglossian.ApplyItemDetailTranslation(System.UInt32,Echoglossian.SourceClientLanguage,System.String,System.String)">
             <summary>
@@ -6609,6 +6628,18 @@
             <param name="sourceKind">The sheet family that produced the payload.</param>
             <returns>True when the payload resolved successfully.</returns>
         </member>
+        <member name="M:Echoglossian.Echoglossian.TryBuildItemTooltipCanonicalPayload(System.UInt32,Dalamud.Game.Gui.DetailKind,Dalamud.Game.ClientLanguage,Echoglossian.NativeUI.Helpers.ItemTooltipCanonicalPayload@,Echoglossian.Echoglossian.StructuredTooltipItemSourceKind@)">
+            <summary>
+                Tries to build one canonical item-tooltip payload from the
+                item-adjacent sheets in one game-data language.
+            </summary>
+            <param name="rawItemId">The raw hovered or agent item identifier.</param>
+            <param name="hoverActionKind">The current hover action kind, if any.</param>
+            <param name="language">The game-data language to read.</param>
+            <param name="payload">The resolved payload.</param>
+            <param name="sourceKind">The sheet family that produced the payload.</param>
+            <returns>True when the payload resolved successfully.</returns>
+        </member>
         <member name="M:Echoglossian.Echoglossian.NormalizeStandardItemReferenceId(System.UInt32)">
             <summary>
                 Normalizes one raw item id to the base <c>Item</c> sheet row
@@ -6617,25 +6648,27 @@
             <param name="rawItemId">The raw hovered or agent item identifier.</param>
             <returns>The normalized base <c>Item</c> row identifier.</returns>
         </member>
-        <member name="M:Echoglossian.Echoglossian.TryBuildStandardItemTooltipCanonicalPayload(System.UInt32,Echoglossian.NativeUI.Helpers.ItemTooltipCanonicalPayload@)">
+        <member name="M:Echoglossian.Echoglossian.TryBuildStandardItemTooltipCanonicalPayload(System.UInt32,Dalamud.Game.ClientLanguage,Echoglossian.NativeUI.Helpers.ItemTooltipCanonicalPayload@)">
             <summary>
                 Tries to build one canonical payload from the standard
                 <c>Item</c> sheet.
             </summary>
             <param name="itemId">The normalized <c>Item</c> row identifier.</param>
+            <param name="language">The game-data language to read.</param>
             <param name="payload">The resolved payload.</param>
             <returns>True when the payload resolved successfully.</returns>
         </member>
-        <member name="M:Echoglossian.Echoglossian.TryBuildEventItemCanonicalPayload(System.UInt32,Echoglossian.NativeUI.Helpers.ItemTooltipCanonicalPayload@)">
+        <member name="M:Echoglossian.Echoglossian.TryBuildEventItemCanonicalPayload(System.UInt32,Dalamud.Game.ClientLanguage,Echoglossian.NativeUI.Helpers.ItemTooltipCanonicalPayload@)">
             <summary>
                 Tries to build one canonical payload from the <c>EventItem</c>
                 sheet.
             </summary>
             <param name="eventItemId">The <c>EventItem</c> row identifier.</param>
+            <param name="language">The game-data language to read.</param>
             <param name="payload">The resolved payload.</param>
             <returns>True when the payload resolved successfully.</returns>
         </member>
-        <member name="M:Echoglossian.Echoglossian.TryBuildDeepDungeonItemCanonicalPayload(System.UInt32,Echoglossian.NativeUI.Helpers.ItemTooltipCanonicalPayload@)">
+        <member name="M:Echoglossian.Echoglossian.TryBuildDeepDungeonItemCanonicalPayload(System.UInt32,Dalamud.Game.ClientLanguage,Echoglossian.NativeUI.Helpers.ItemTooltipCanonicalPayload@)">
             <summary>
                 Tries to build one canonical payload from the
                 <c>DeepDungeonItem</c> sheet.
@@ -6643,6 +6676,7 @@
             <param name="deepDungeonItemId">
                 The <c>DeepDungeonItem</c> row identifier.
             </param>
+            <param name="language">The game-data language to read.</param>
             <param name="payload">The resolved payload.</param>
             <returns>True when the payload resolved successfully.</returns>
         </member>
@@ -7351,7 +7385,7 @@
             </summary>
             <returns>The registration list.</returns>
         </member>
-        <member name="M:Echoglossian.Echoglossian.CreateReferenceTextPrefetchRegistration``1(System.String,Echoglossian.Echoglossian.TryCollectReferenceIdsDelegate,Echoglossian.Echoglossian.TryBuildReferencePayloadDelegate,Echoglossian.Cache.ReferenceTextCacheStore{``0},System.Func{Echoglossian.EFCoreSqlite.EchoglossianDbContext,Microsoft.EntityFrameworkCore.DbSet{``0}},System.Func{System.Boolean},System.Func{System.String,System.String,System.Nullable{System.Int32},System.String,Echoglossian.NativeUI.Helpers.ReferenceTextCanonicalPayload,Echoglossian.NativeUI.Helpers.ReferenceTextCanonicalPayload,``0})">
+        <member name="M:Echoglossian.Echoglossian.CreateReferenceTextPrefetchRegistration``1(System.String,Echoglossian.Echoglossian.TryCollectReferenceIdsDelegate,Echoglossian.Echoglossian.TryBuildLocalizedReferencePayloadDelegate,Echoglossian.Cache.ReferenceTextCacheStore{``0},System.Func{Echoglossian.EFCoreSqlite.EchoglossianDbContext,Microsoft.EntityFrameworkCore.DbSet{``0}},System.Func{System.Boolean},System.Func{System.String,System.String,System.Nullable{System.Int32},System.String,Echoglossian.NativeUI.Helpers.ReferenceTextCanonicalPayload,Echoglossian.NativeUI.Helpers.ReferenceTextCanonicalPayload,``0})">
             <summary>
                 Creates one shared sheet-family registration.
             </summary>
@@ -7364,6 +7398,19 @@
             <param name="isEnabled">Gets whether this registration should run.</param>
             <param name="createRow">Builds the persisted row for this registration.</param>
             <returns>The registration.</returns>
+        </member>
+        <member name="M:Echoglossian.Echoglossian.TranslateReferenceFieldsPreferringJapaneseAsync(System.Collections.Generic.IReadOnlyList{Echoglossian.Translators.TranslationField},Echoglossian.SourceClientLanguage,System.String,System.UInt32,Echoglossian.Echoglossian.TryBuildLocalizedReferencePayloadDelegate,System.Func{System.Collections.Generic.IReadOnlyList{Echoglossian.Translators.TranslationField},Echoglossian.SourceClientLanguage,System.Threading.Tasks.Task{Echoglossian.Translators.TranslationFieldBatchResult}})">
+            <summary>
+                Translates reference-text fields, sending the Japanese row's fields
+                to the engine when the Japanese source-text option applies.
+            </summary>
+            <param name="fields">The client-language fields still missing a translation.</param>
+            <param name="clientSource">The captured client source language.</param>
+            <param name="targetLanguage">The target language code.</param>
+            <param name="referenceId">The sheet row identifier shared by every language.</param>
+            <param name="tryBuildPayload">Builds the payload in one game-data language.</param>
+            <param name="translateFieldsAsync">Translates a field batch from a source language.</param>
+            <returns>The translated field batch.</returns>
         </member>
         <member name="M:Echoglossian.Echoglossian.LoadReferenceTextPrefetchSnapshotAsync``1(Echoglossian.Cache.ReferenceTextCacheStore{``0},System.Func{Echoglossian.EFCoreSqlite.EchoglossianDbContext,Microsoft.EntityFrameworkCore.DbSet{``0}},Echoglossian.TranslationReuseScope,System.String,Echoglossian.DBHelpers.ReferenceTextPersistenceWriter.ReferenceTextSnapshotRequest,Echoglossian.Echoglossian.ReferenceTextPrefetchGeneration)">
             <summary>Loads and publishes one registration-level canonical snapshot.</summary>
@@ -7490,11 +7537,29 @@
             <param name="payload">The resolved payload.</param>
             <returns>True when the payload resolved successfully.</returns>
         </member>
+        <member name="M:Echoglossian.Echoglossian.TryBuildGeneralActionPayload(System.UInt32,Dalamud.Game.ClientLanguage,Echoglossian.NativeUI.Helpers.ReferenceTextCanonicalPayload@)">
+            <summary>
+                Tries to build one canonical GeneralAction payload from sheets.
+            </summary>
+            <param name="referenceId">The GeneralAction row identifier.</param>
+            <param name="language">The game-data language to read.</param>
+            <param name="payload">The resolved payload.</param>
+            <returns>True when the payload resolved successfully.</returns>
+        </member>
         <member name="M:Echoglossian.Echoglossian.TryBuildBuddyActionPayload(System.UInt32,Echoglossian.NativeUI.Helpers.ReferenceTextCanonicalPayload@)">
             <summary>
                 Tries to build one canonical BuddyAction payload from sheets.
             </summary>
             <param name="referenceId">The BuddyAction row identifier.</param>
+            <param name="payload">The resolved payload.</param>
+            <returns>True when the payload resolved successfully.</returns>
+        </member>
+        <member name="M:Echoglossian.Echoglossian.TryBuildBuddyActionPayload(System.UInt32,Dalamud.Game.ClientLanguage,Echoglossian.NativeUI.Helpers.ReferenceTextCanonicalPayload@)">
+            <summary>
+                Tries to build one canonical BuddyAction payload from sheets.
+            </summary>
+            <param name="referenceId">The BuddyAction row identifier.</param>
+            <param name="language">The game-data language to read.</param>
             <param name="payload">The resolved payload.</param>
             <returns>True when the payload resolved successfully.</returns>
         </member>
@@ -7506,11 +7571,29 @@
             <param name="payload">The resolved payload.</param>
             <returns>True when the payload resolved successfully.</returns>
         </member>
+        <member name="M:Echoglossian.Echoglossian.TryBuildCompanyActionPayload(System.UInt32,Dalamud.Game.ClientLanguage,Echoglossian.NativeUI.Helpers.ReferenceTextCanonicalPayload@)">
+            <summary>
+                Tries to build one canonical CompanyAction payload from sheets.
+            </summary>
+            <param name="referenceId">The CompanyAction row identifier.</param>
+            <param name="language">The game-data language to read.</param>
+            <param name="payload">The resolved payload.</param>
+            <returns>True when the payload resolved successfully.</returns>
+        </member>
         <member name="M:Echoglossian.Echoglossian.TryBuildCraftActionPayload(System.UInt32,Echoglossian.NativeUI.Helpers.ReferenceTextCanonicalPayload@)">
             <summary>
                 Tries to build one canonical CraftAction payload from sheets.
             </summary>
             <param name="referenceId">The CraftAction row identifier.</param>
+            <param name="payload">The resolved payload.</param>
+            <returns>True when the payload resolved successfully.</returns>
+        </member>
+        <member name="M:Echoglossian.Echoglossian.TryBuildCraftActionPayload(System.UInt32,Dalamud.Game.ClientLanguage,Echoglossian.NativeUI.Helpers.ReferenceTextCanonicalPayload@)">
+            <summary>
+                Tries to build one canonical CraftAction payload from sheets.
+            </summary>
+            <param name="referenceId">The CraftAction row identifier.</param>
+            <param name="language">The game-data language to read.</param>
             <param name="payload">The resolved payload.</param>
             <returns>True when the payload resolved successfully.</returns>
         </member>
@@ -7522,11 +7605,29 @@
             <param name="payload">The resolved payload.</param>
             <returns>True when the payload resolved successfully.</returns>
         </member>
+        <member name="M:Echoglossian.Echoglossian.TryBuildPetActionPayload(System.UInt32,Dalamud.Game.ClientLanguage,Echoglossian.NativeUI.Helpers.ReferenceTextCanonicalPayload@)">
+            <summary>
+                Tries to build one canonical PetAction payload from sheets.
+            </summary>
+            <param name="referenceId">The PetAction row identifier.</param>
+            <param name="language">The game-data language to read.</param>
+            <param name="payload">The resolved payload.</param>
+            <returns>True when the payload resolved successfully.</returns>
+        </member>
         <member name="M:Echoglossian.Echoglossian.TryBuildEventActionPayload(System.UInt32,Echoglossian.NativeUI.Helpers.ReferenceTextCanonicalPayload@)">
             <summary>
                 Tries to build one canonical EventAction payload from sheets.
             </summary>
             <param name="referenceId">The EventAction row identifier.</param>
+            <param name="payload">The resolved payload.</param>
+            <returns>True when the payload resolved successfully.</returns>
+        </member>
+        <member name="M:Echoglossian.Echoglossian.TryBuildEventActionPayload(System.UInt32,Dalamud.Game.ClientLanguage,Echoglossian.NativeUI.Helpers.ReferenceTextCanonicalPayload@)">
+            <summary>
+                Tries to build one canonical EventAction payload from sheets.
+            </summary>
+            <param name="referenceId">The EventAction row identifier.</param>
+            <param name="language">The game-data language to read.</param>
             <param name="payload">The resolved payload.</param>
             <returns>True when the payload resolved successfully.</returns>
         </member>
@@ -7538,11 +7639,29 @@
             <param name="payload">The resolved payload.</param>
             <returns>True when the payload resolved successfully.</returns>
         </member>
+        <member name="M:Echoglossian.Echoglossian.TryBuildEventItemPayload(System.UInt32,Dalamud.Game.ClientLanguage,Echoglossian.NativeUI.Helpers.ReferenceTextCanonicalPayload@)">
+            <summary>
+                Tries to build one canonical EventItem payload from sheets.
+            </summary>
+            <param name="referenceId">The EventItem row identifier.</param>
+            <param name="language">The game-data language to read.</param>
+            <param name="payload">The resolved payload.</param>
+            <returns>True when the payload resolved successfully.</returns>
+        </member>
         <member name="M:Echoglossian.Echoglossian.TryBuildBgcArmyActionPayload(System.UInt32,Echoglossian.NativeUI.Helpers.ReferenceTextCanonicalPayload@)">
             <summary>
                 Tries to build one canonical BgcArmyAction payload from sheets.
             </summary>
             <param name="referenceId">The BgcArmyAction row identifier.</param>
+            <param name="payload">The resolved payload.</param>
+            <returns>True when the payload resolved successfully.</returns>
+        </member>
+        <member name="M:Echoglossian.Echoglossian.TryBuildBgcArmyActionPayload(System.UInt32,Dalamud.Game.ClientLanguage,Echoglossian.NativeUI.Helpers.ReferenceTextCanonicalPayload@)">
+            <summary>
+                Tries to build one canonical BgcArmyAction payload from sheets.
+            </summary>
+            <param name="referenceId">The BgcArmyAction row identifier.</param>
+            <param name="language">The game-data language to read.</param>
             <param name="payload">The resolved payload.</param>
             <returns>True when the payload resolved successfully.</returns>
         </member>
@@ -7554,11 +7673,29 @@
             <param name="payload">The resolved payload.</param>
             <returns>True when the payload resolved successfully.</returns>
         </member>
+        <member name="M:Echoglossian.Echoglossian.TryBuildAozActionPayload(System.UInt32,Dalamud.Game.ClientLanguage,Echoglossian.NativeUI.Helpers.ReferenceTextCanonicalPayload@)">
+            <summary>
+                Tries to build one canonical AozAction payload from sheets.
+            </summary>
+            <param name="referenceId">The AozAction row identifier.</param>
+            <param name="language">The game-data language to read.</param>
+            <param name="payload">The resolved payload.</param>
+            <returns>True when the payload resolved successfully.</returns>
+        </member>
         <member name="M:Echoglossian.Echoglossian.TryBuildPvPActionPayload(System.UInt32,Echoglossian.NativeUI.Helpers.ReferenceTextCanonicalPayload@)">
             <summary>
                 Tries to build one canonical PvPAction payload from sheets.
             </summary>
             <param name="referenceId">The PvPAction row identifier.</param>
+            <param name="payload">The resolved payload.</param>
+            <returns>True when the payload resolved successfully.</returns>
+        </member>
+        <member name="M:Echoglossian.Echoglossian.TryBuildPvPActionPayload(System.UInt32,Dalamud.Game.ClientLanguage,Echoglossian.NativeUI.Helpers.ReferenceTextCanonicalPayload@)">
+            <summary>
+                Tries to build one canonical PvPAction payload from sheets.
+            </summary>
+            <param name="referenceId">The PvPAction row identifier.</param>
+            <param name="language">The game-data language to read.</param>
             <param name="payload">The resolved payload.</param>
             <returns>True when the payload resolved successfully.</returns>
         </member>
@@ -7570,11 +7707,29 @@
             <param name="payload">The resolved payload.</param>
             <returns>True when the payload resolved successfully.</returns>
         </member>
+        <member name="M:Echoglossian.Echoglossian.TryBuildMountActionPayload(System.UInt32,Dalamud.Game.ClientLanguage,Echoglossian.NativeUI.Helpers.ReferenceTextCanonicalPayload@)">
+            <summary>
+                Tries to build one canonical MountAction payload from sheets.
+            </summary>
+            <param name="referenceId">The MountAction row identifier.</param>
+            <param name="language">The game-data language to read.</param>
+            <param name="payload">The resolved payload.</param>
+            <returns>True when the payload resolved successfully.</returns>
+        </member>
         <member name="M:Echoglossian.Echoglossian.TryBuildMainCommandPayload(System.UInt32,Echoglossian.NativeUI.Helpers.ReferenceTextCanonicalPayload@)">
             <summary>
                 Tries to build one canonical MainCommand payload from sheets.
             </summary>
             <param name="referenceId">The MainCommand row identifier.</param>
+            <param name="payload">The resolved payload.</param>
+            <returns>True when the payload resolved successfully.</returns>
+        </member>
+        <member name="M:Echoglossian.Echoglossian.TryBuildMainCommandPayload(System.UInt32,Dalamud.Game.ClientLanguage,Echoglossian.NativeUI.Helpers.ReferenceTextCanonicalPayload@)">
+            <summary>
+                Tries to build one canonical MainCommand payload from sheets.
+            </summary>
+            <param name="referenceId">The MainCommand row identifier.</param>
+            <param name="language">The game-data language to read.</param>
             <param name="payload">The resolved payload.</param>
             <returns>True when the payload resolved successfully.</returns>
         </member>
@@ -7608,11 +7763,29 @@
             <param name="payload">The resolved payload.</param>
             <returns>True when the payload resolved successfully.</returns>
         </member>
+        <member name="M:Echoglossian.Echoglossian.TryBuildEurekaMagiaActionPayload(System.UInt32,Dalamud.Game.ClientLanguage,Echoglossian.NativeUI.Helpers.ReferenceTextCanonicalPayload@)">
+            <summary>
+                Tries to build one canonical EurekaMagiaAction payload from sheets.
+            </summary>
+            <param name="referenceId">The EurekaMagiaAction row identifier.</param>
+            <param name="language">The game-data language to read.</param>
+            <param name="payload">The resolved payload.</param>
+            <returns>True when the payload resolved successfully.</returns>
+        </member>
         <member name="M:Echoglossian.Echoglossian.TryBuildDeepDungeonItemPayload(System.UInt32,Echoglossian.NativeUI.Helpers.ReferenceTextCanonicalPayload@)">
             <summary>
                 Tries to build one canonical DeepDungeonItem payload from sheets.
             </summary>
             <param name="referenceId">The DeepDungeonItem row identifier.</param>
+            <param name="payload">The resolved payload.</param>
+            <returns>True when the payload resolved successfully.</returns>
+        </member>
+        <member name="M:Echoglossian.Echoglossian.TryBuildDeepDungeonItemPayload(System.UInt32,Dalamud.Game.ClientLanguage,Echoglossian.NativeUI.Helpers.ReferenceTextCanonicalPayload@)">
+            <summary>
+                Tries to build one canonical DeepDungeonItem payload from sheets.
+            </summary>
+            <param name="referenceId">The DeepDungeonItem row identifier.</param>
+            <param name="language">The game-data language to read.</param>
             <param name="payload">The resolved payload.</param>
             <returns>True when the payload resolved successfully.</returns>
         </member>
@@ -7649,7 +7822,7 @@
             <param name="payload">The canonical source payload.</param>
             <returns>The stable source hash.</returns>
         </member>
-        <member name="M:Echoglossian.Echoglossian.TryBuildActionReferenceTextPayload(System.UInt32,System.UInt32,System.Nullable{System.UInt32},System.String,Echoglossian.NativeUI.Helpers.ReferenceTextCanonicalPayload@)">
+        <member name="M:Echoglossian.Echoglossian.TryBuildActionReferenceTextPayload(System.UInt32,System.UInt32,System.Nullable{System.UInt32},System.String,Dalamud.Game.ClientLanguage,Echoglossian.NativeUI.Helpers.ReferenceTextCanonicalPayload@)">
             <summary>
                 Tries to build one canonical payload from a linked Action row and
                 optional overrides.
@@ -7658,6 +7831,7 @@
             <param name="actionId">The linked Action row identifier.</param>
             <param name="iconOverride">The icon override, when the source sheet provides one.</param>
             <param name="descriptionOverride">The description override, when the source sheet provides one.</param>
+            <param name="language">The game-data language to read.</param>
             <param name="payload">The resolved payload.</param>
             <returns>True when the payload resolved successfully.</returns>
         </member>
@@ -7884,6 +8058,16 @@
             <param name="payload">The resolved payload.</param>
             <returns>True when the payload resolved successfully.</returns>
         </member>
+        <member name="T:Echoglossian.Echoglossian.TryBuildLocalizedReferencePayloadDelegate">
+            <summary>
+                Tries to build one canonical payload from one sheet-row identifier
+                in one game-data language.
+            </summary>
+            <param name="referenceId">The sheet-row identifier.</param>
+            <param name="language">The game-data language to read.</param>
+            <param name="payload">The resolved payload.</param>
+            <returns>True when the payload resolved successfully.</returns>
+        </member>
         <member name="P:Echoglossian.Echoglossian.SourceTextLanguagePolicy">
             <summary>
                 Gets the policy that decides when the Japanese original is preferred.
@@ -7893,6 +8077,27 @@
             <summary>
                 Gets the provider that reads Japanese quest texts from game data.
             </summary>
+        </member>
+        <member name="M:Echoglossian.Echoglossian.TryGetJapanesePrefetchSource(Echoglossian.SourceClientLanguage@)">
+            <summary>
+                Decides whether a sheet-backed prefetch should also read the
+                Japanese row for the current client and target languages.
+            </summary>
+            <param name="japaneseSource">The Japanese source language when it applies.</param>
+            <returns><see langword="true" /> when the Japanese row should be read.</returns>
+        </member>
+        <member name="M:Echoglossian.Echoglossian.TranslatePrefetchPreferringAlternate(System.String,Echoglossian.SourceClientLanguage,System.String,System.Nullable{Echoglossian.SourceClientLanguage},System.String,System.String)">
+            <summary>
+                Translates one prefetched sheet text, preferring its Japanese
+                original when one was read for the same sheet row.
+            </summary>
+            <param name="clientText">The client-language sheet text.</param>
+            <param name="clientSource">The captured client source language.</param>
+            <param name="japaneseText">The Japanese sheet text, if any.</param>
+            <param name="japaneseSource">The Japanese source language, if it applies.</param>
+            <param name="targetLanguage">The target language code.</param>
+            <param name="originContext">The translation origin label.</param>
+            <returns>The translated text.</returns>
         </member>
         <member name="M:Echoglossian.Echoglossian.ResolveJapaneseDialogueSourceTextAsync(System.String,Echoglossian.SourceClientLanguage,System.String,System.Threading.CancellationToken)">
             <summary>
@@ -7982,21 +8187,25 @@
             <param name="traitId">The trait row identifier.</param>
             <param name="currentClassJobId">The current class-job identifier.</param>
         </member>
-        <member name="M:Echoglossian.Echoglossian.PrefetchTraitDetailName(Echoglossian.NativeUI.Helpers.TraitCanonicalPayload,Echoglossian.EFCoreSqlite.Models.Trait,Echoglossian.SourceClientLanguage)">
+        <member name="M:Echoglossian.Echoglossian.PrefetchTraitDetailName(Echoglossian.NativeUI.Helpers.TraitCanonicalPayload,Echoglossian.EFCoreSqlite.Models.Trait,Echoglossian.SourceClientLanguage,System.String,System.Nullable{Echoglossian.SourceClientLanguage})">
             <summary>
                 Prefetches the translated trait name when it is not yet persisted.
             </summary>
             <param name="originalPayload">The canonical original payload.</param>
             <param name="existingRow">The currently persisted row, if any.</param>
             <param name="sourceLanguage">The resolved source language.</param>
+            <param name="japaneseName">The Japanese text, if resolved.</param>
+            <param name="japaneseSource">The Japanese source language, if it applies.</param>
         </member>
-        <member name="M:Echoglossian.Echoglossian.PrefetchTraitDetailDescription(Echoglossian.NativeUI.Helpers.TraitCanonicalPayload,Echoglossian.EFCoreSqlite.Models.Trait,Echoglossian.SourceClientLanguage)">
+        <member name="M:Echoglossian.Echoglossian.PrefetchTraitDetailDescription(Echoglossian.NativeUI.Helpers.TraitCanonicalPayload,Echoglossian.EFCoreSqlite.Models.Trait,Echoglossian.SourceClientLanguage,System.String,System.Nullable{Echoglossian.SourceClientLanguage})">
             <summary>
                 Prefetches the translated trait description when it is not yet persisted.
             </summary>
             <param name="originalPayload">The canonical original payload.</param>
             <param name="existingRow">The currently persisted row, if any.</param>
             <param name="sourceLanguage">The resolved source language.</param>
+            <param name="japaneseDescription">The Japanese text, if resolved.</param>
+            <param name="japaneseSource">The Japanese source language, if it applies.</param>
         </member>
         <member name="M:Echoglossian.Echoglossian.ApplyTraitDetailTranslation(System.UInt32,System.UInt32,Echoglossian.SourceClientLanguage,System.String,System.String)">
             <summary>
@@ -8052,6 +8261,17 @@
             </summary>
             <param name="traitId">The trait row identifier.</param>
             <param name="currentClassJobId">The current class-job identifier.</param>
+            <param name="payload">The resolved payload.</param>
+            <returns>True when the payload resolved successfully.</returns>
+        </member>
+        <member name="M:Echoglossian.Echoglossian.TryBuildTraitCanonicalPayload(System.UInt32,System.Byte,Dalamud.Game.ClientLanguage,Echoglossian.NativeUI.Helpers.TraitCanonicalPayload@)">
+            <summary>
+                Tries to build one canonical trait payload from sheets in one
+                game-data language.
+            </summary>
+            <param name="traitId">The trait row identifier.</param>
+            <param name="currentClassJobId">The current class-job identifier.</param>
+            <param name="language">The game-data language to read.</param>
             <param name="payload">The resolved payload.</param>
             <returns>True when the payload resolved successfully.</returns>
         </member>

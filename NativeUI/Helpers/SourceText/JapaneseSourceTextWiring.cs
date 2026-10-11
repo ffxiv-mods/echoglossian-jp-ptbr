@@ -29,6 +29,55 @@ public partial class Echoglossian
           new DialogueInterlocutorMetadataResolver(this));
 
   /// <summary>
+  ///     Decides whether a sheet-backed prefetch should also read the
+  ///     Japanese row for the current client and target languages.
+  /// </summary>
+  /// <param name="japaneseSource">The Japanese source language when it applies.</param>
+  /// <returns><see langword="true" /> when the Japanese row should be read.</returns>
+  private bool TryGetJapanesePrefetchSource(out SourceClientLanguage japaneseSource)
+  {
+    japaneseSource = default;
+    return RuntimeLanguageHelper.TryResolveCurrentSourceLanguage(out var clientSource) &&
+           this.SourceTextLanguagePolicy.TryGetAlternateSource(
+               clientSource,
+               RuntimeLanguageHelper.GetConfiguredTargetLanguageCode(this.configuration.Lang),
+               out japaneseSource);
+  }
+
+  /// <summary>
+  ///     Translates one prefetched sheet text, preferring its Japanese
+  ///     original when one was read for the same sheet row.
+  /// </summary>
+  /// <param name="clientText">The client-language sheet text.</param>
+  /// <param name="clientSource">The captured client source language.</param>
+  /// <param name="japaneseText">The Japanese sheet text, if any.</param>
+  /// <param name="japaneseSource">The Japanese source language, if it applies.</param>
+  /// <param name="targetLanguage">The target language code.</param>
+  /// <param name="originContext">The translation origin label.</param>
+  /// <returns>The translated text.</returns>
+  private static string TranslatePrefetchPreferringAlternate(
+      string clientText,
+      SourceClientLanguage clientSource,
+      string? japaneseText,
+      SourceClientLanguage? japaneseSource,
+      string targetLanguage,
+      string originContext)
+  {
+    var translationService = TranslationService;
+    return SourceTextTranslation.TranslatePreferringAlternate(
+        clientText,
+        clientSource,
+        japaneseText,
+        japaneseSource,
+        targetLanguage,
+        (text, source) => translationService.Translate(
+            text,
+            source,
+            targetLanguage,
+            originContext: originContext));
+  }
+
+  /// <summary>
   ///     Resolves the Japanese original of one visible quest dialogue line
   ///     when the option applies to the operation.
   /// </summary>

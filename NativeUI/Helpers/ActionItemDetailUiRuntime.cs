@@ -3334,9 +3334,11 @@ public unsafe partial class Echoglossian
     ///     runtime service used when ActionDetail sheet payloads are captured.
     /// </summary>
     /// <param name="sourceText">The original source SeString.</param>
+    /// <param name="language">The game-data language; defaults to the client language.</param>
     /// <returns>The evaluated visible text, or extracted source text on failure.</returns>
     internal static string EvaluateStructuredTooltipSourceText(
-        ReadOnlySeStringSpan sourceText)
+        ReadOnlySeStringSpan sourceText,
+        ClientLanguage? language = null)
     {
         var extractedText = sourceText.ExtractText();
         var evaluator = SeStringEvaluator;
@@ -3349,7 +3351,7 @@ public unsafe partial class Echoglossian
         {
             var evaluatedText = evaluator.Evaluate(
                     sourceText,
-                    language: ClientStateInterface.ClientLanguage)
+                    language: language ?? ClientStateInterface.ClientLanguage)
                 .ExtractText();
             return string.IsNullOrWhiteSpace(evaluatedText)
                 ? extractedText

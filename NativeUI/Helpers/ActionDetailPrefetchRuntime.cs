@@ -173,7 +173,19 @@ public unsafe partial class Echoglossian
             return;
         }
 
-        var translationService = TranslationService;
+        ActionTooltipCanonicalPayload? japanesePayload = null;
+        SourceClientLanguage? japaneseSource = null;
+        if (this.TryGetJapanesePrefetchSource(out var alternateSource) &&
+            TryBuildActionTooltipCanonicalPayload(
+                actionId,
+                currentClassJobId,
+                ClientLanguage.Japanese,
+                out var alternatePayload))
+        {
+            japanesePayload = alternatePayload;
+            japaneseSource = alternateSource;
+        }
+
         RunActionDetailPrefetchOperationEntry(
             originalPayload,
             GetGameVersion(),
@@ -182,11 +194,15 @@ public unsafe partial class Echoglossian
             this.TryGetQueuedTranslation,
             this.QueueTranslation,
             (sourceText, capturedSource, targetLanguage, originContext) =>
-                translationService.Translate(
+                TranslatePrefetchPreferringAlternate(
                     sourceText,
                     capturedSource,
+                    string.Equals(sourceText, originalPayload.Name, StringComparison.Ordinal)
+                        ? japanesePayload?.Name
+                        : null,
+                    japaneseSource,
                     targetLanguage,
-                    originContext: originContext),
+                    originContext),
             this.FindActionTooltip,
             row => this.InsertActionTooltip(row),
             out var sourceLanguage,
@@ -201,7 +217,9 @@ public unsafe partial class Echoglossian
             originalPayload,
             existingRow,
             sourceLanguage,
-            scope);
+            scope,
+            japanesePayload?.Description,
+            japaneseSource);
     }
 
     /// <summary>
@@ -211,11 +229,15 @@ public unsafe partial class Echoglossian
     /// <param name="existingRow">The currently persisted row, if any.</param>
     /// <param name="sourceLanguage">The resolved source language.</param>
     /// <param name="scope">The immutable operation reuse scope.</param>
+    /// <param name="japaneseDescription">The Japanese description, if resolved.</param>
+    /// <param name="japaneseSource">The Japanese source language, if it applies.</param>
     private void PrefetchActionDetailDescription(
         ActionTooltipCanonicalPayload originalPayload,
         ActionTooltip existingRow,
         SourceClientLanguage sourceLanguage,
-        TranslationReuseScope scope)
+        TranslationReuseScope scope,
+        string? japaneseDescription,
+        SourceClientLanguage? japaneseSource)
     {
         if (string.IsNullOrWhiteSpace(originalPayload.Description) ||
             StructuredTooltipTranslationValidation
@@ -226,18 +248,19 @@ public unsafe partial class Echoglossian
             return;
         }
 
-        var translationService = TranslationService;
         DispatchActionDetailPrefetchTranslation(
             $"ActionDetailPrefetch|{originalPayload.ActionId}|Description|{originalPayload.Description}",
             sourceLanguage,
             scope,
             this.TryGetQueuedTranslation,
             this.QueueTranslation,
-            () => translationService.Translate(
+            () => TranslatePrefetchPreferringAlternate(
                 originalPayload.Description,
                 sourceLanguage,
+                japaneseDescription,
+                japaneseSource,
                 scope.TargetLanguageCode,
-                originContext: BuildActionDetailOriginContext(
+                BuildActionDetailOriginContext(
                     originalPayload,
                     "Description")),
             (translatedDescription, capturedScope, _) =>
@@ -835,13 +858,34 @@ public unsafe partial class Echoglossian
         byte currentClassJobId,
         out ActionTooltipCanonicalPayload payload)
     {
+        return TryBuildActionTooltipCanonicalPayload(
+            actionId,
+            currentClassJobId,
+            ClientStateInterface.ClientLanguage,
+            out payload);
+    }
+
+    /// <summary>
+    ///     Tries to build one canonical action-tooltip payload from sheets in
+    ///     one game-data language.
+    /// </summary>
+    /// <param name="actionId">The action row identifier.</param>
+    /// <param name="currentClassJobId">The current class-job identifier.</param>
+    /// <param name="language">The game-data language to read.</param>
+    /// <param name="payload">The resolved payload.</param>
+    /// <returns>True when the payload resolved successfully.</returns>
+    private static bool TryBuildActionTooltipCanonicalPayload(
+        uint actionId,
+        byte currentClassJobId,
+        ClientLanguage language,
+        out ActionTooltipCanonicalPayload payload)
+    {
         payload = new ActionTooltipCanonicalPayload();
 
         var actionSheet =
-            DManager.GetExcelSheet<ActionSheet>(ClientStateInterface.ClientLanguage);
+            DManager.GetExcelSheet<ActionSheet>(language);
         var actionTransientSheet =
-            DManager.GetExcelSheet<ActionTransientSheet>(
-                ClientStateInterface.ClientLanguage);
+            DManager.GetExcelSheet<ActionTransientSheet>(language);
         if (actionSheet == null ||
             actionTransientSheet == null ||
             !actionSheet.TryGetRow(actionId, out var actionRow))
@@ -850,7 +894,7 @@ public unsafe partial class Echoglossian
         }
 
         var description = actionTransientSheet.TryGetRow(actionId, out var transientRow)
-            ? EvaluateSheetText(transientRow.Description)
+            ? EvaluateSheetText(transientRow.Description, language)
             : string.Empty;
         payload = new ActionTooltipCanonicalPayload
         {
@@ -875,10 +919,13 @@ public unsafe partial class Echoglossian
     ///     so transient descriptions with macros do not lose numeric values.
     /// </summary>
     /// <param name="text">The raw sheet text.</param>
+    /// <param name="language">The game-data language; defaults to the client language.</param>
     /// <returns>The evaluated visible text.</returns>
-    private static string EvaluateSheetText(ReadOnlySeString text)
+    private static string EvaluateSheetText(
+        ReadOnlySeString text,
+        ClientLanguage? language = null)
     {
-        return EvaluateStructuredTooltipSourceText(text.AsSpan());
+        return EvaluateStructuredTooltipSourceText(text.AsSpan(), language);
     }
 
     /// <summary>

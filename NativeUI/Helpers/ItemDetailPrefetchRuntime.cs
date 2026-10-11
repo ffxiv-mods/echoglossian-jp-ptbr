@@ -173,14 +173,35 @@ public unsafe partial class Echoglossian
         var existingRow = this.FindItemTooltip(originalRow) ?? originalRow;
         this.InsertItemTooltip(originalRow);
 
+        ItemTooltipCanonicalPayload? japanesePayload = null;
+        SourceClientLanguage? japaneseSource = null;
+        if (this.SourceTextLanguagePolicy.TryGetAlternateSource(
+                sourceLanguage,
+                LangDict[LanguageInt].Code,
+                out var alternateSource) &&
+            TryBuildItemTooltipCanonicalPayload(
+                itemId,
+                DetailKind.None,
+                ClientLanguage.Japanese,
+                out var alternatePayload,
+                out _))
+        {
+            japanesePayload = alternatePayload;
+            japaneseSource = alternateSource;
+        }
+
         this.PrefetchItemDetailName(
             originalPayload,
             existingRow,
-            sourceLanguage);
+            sourceLanguage,
+            japanesePayload?.Name,
+            japaneseSource);
         this.PrefetchItemDetailDescription(
             originalPayload,
             existingRow,
-            sourceLanguage);
+            sourceLanguage,
+            japanesePayload?.Description,
+            japaneseSource);
     }
 
     /// <summary>
@@ -189,10 +210,14 @@ public unsafe partial class Echoglossian
     /// <param name="originalPayload">The canonical original payload.</param>
     /// <param name="existingRow">The currently persisted row, if any.</param>
     /// <param name="sourceLanguage">The resolved source language.</param>
+    /// <param name="japaneseName">The Japanese name, if resolved.</param>
+    /// <param name="japaneseSource">The Japanese source language, if it applies.</param>
     private void PrefetchItemDetailName(
         ItemTooltipCanonicalPayload originalPayload,
         ItemTooltip existingRow,
-        SourceClientLanguage sourceLanguage)
+        SourceClientLanguage sourceLanguage,
+        string? japaneseName,
+        SourceClientLanguage? japaneseSource)
     {
         if (string.IsNullOrWhiteSpace(originalPayload.Name) ||
             !string.IsNullOrWhiteSpace(existingRow.TranslatedItemName))
@@ -215,11 +240,13 @@ public unsafe partial class Echoglossian
 
         this.QueueTranslation(
             translationKey,
-            () => TranslationService.Translate(
+            () => TranslatePrefetchPreferringAlternate(
                 originalPayload.Name,
                 sourceLanguage,
+                japaneseName,
+                japaneseSource,
                 LangDict[LanguageInt].Code,
-                originContext: BuildItemDetailOriginContext(
+                BuildItemDetailOriginContext(
                     originalPayload,
                     "Name")),
             translatedName => this.ApplyItemDetailTranslation(
@@ -234,10 +261,14 @@ public unsafe partial class Echoglossian
     /// <param name="originalPayload">The canonical original payload.</param>
     /// <param name="existingRow">The currently persisted row, if any.</param>
     /// <param name="sourceLanguage">The resolved source language.</param>
+    /// <param name="japaneseDescription">The Japanese description, if resolved.</param>
+    /// <param name="japaneseSource">The Japanese source language, if it applies.</param>
     private void PrefetchItemDetailDescription(
         ItemTooltipCanonicalPayload originalPayload,
         ItemTooltip existingRow,
-        SourceClientLanguage sourceLanguage)
+        SourceClientLanguage sourceLanguage,
+        string? japaneseDescription,
+        SourceClientLanguage? japaneseSource)
     {
         if (string.IsNullOrWhiteSpace(originalPayload.Description) ||
             StructuredTooltipTranslationValidation
@@ -263,11 +294,13 @@ public unsafe partial class Echoglossian
 
         this.QueueTranslation(
             translationKey,
-            () => TranslationService.Translate(
+            () => TranslatePrefetchPreferringAlternate(
                 originalPayload.Description,
                 sourceLanguage,
+                japaneseDescription,
+                japaneseSource,
                 LangDict[LanguageInt].Code,
-                originContext: BuildItemDetailOriginContext(
+                BuildItemDetailOriginContext(
                     originalPayload,
                     "Description")),
             translatedDescription => this.ApplyItemDetailTranslation(
@@ -525,6 +558,31 @@ public unsafe partial class Echoglossian
         out ItemTooltipCanonicalPayload payload,
         out StructuredTooltipItemSourceKind sourceKind)
     {
+        return TryBuildItemTooltipCanonicalPayload(
+            rawItemId,
+            hoverActionKind,
+            ClientStateInterface.ClientLanguage,
+            out payload,
+            out sourceKind);
+    }
+
+    /// <summary>
+    ///     Tries to build one canonical item-tooltip payload from the
+    ///     item-adjacent sheets in one game-data language.
+    /// </summary>
+    /// <param name="rawItemId">The raw hovered or agent item identifier.</param>
+    /// <param name="hoverActionKind">The current hover action kind, if any.</param>
+    /// <param name="language">The game-data language to read.</param>
+    /// <param name="payload">The resolved payload.</param>
+    /// <param name="sourceKind">The sheet family that produced the payload.</param>
+    /// <returns>True when the payload resolved successfully.</returns>
+    private static bool TryBuildItemTooltipCanonicalPayload(
+        uint rawItemId,
+        DetailKind hoverActionKind,
+        ClientLanguage language,
+        out ItemTooltipCanonicalPayload payload,
+        out StructuredTooltipItemSourceKind sourceKind)
+    {
         payload = new ItemTooltipCanonicalPayload();
         sourceKind = StructuredTooltipItemSourceKind.None;
 
@@ -536,6 +594,7 @@ public unsafe partial class Echoglossian
         if (hoverActionKind == DetailKind.DeepDungeonItem &&
             TryBuildDeepDungeonItemCanonicalPayload(
                 rawItemId,
+                language,
                 out payload))
         {
             sourceKind = StructuredTooltipItemSourceKind.DeepDungeonItem;
@@ -545,6 +604,7 @@ public unsafe partial class Echoglossian
         if (ItemUtil.IsEventItem(rawItemId) &&
             TryBuildEventItemCanonicalPayload(
                 rawItemId,
+                language,
                 out payload))
         {
             sourceKind = StructuredTooltipItemSourceKind.EventItem;
@@ -555,6 +615,7 @@ public unsafe partial class Echoglossian
         if (normalizedItemId != 0 &&
             TryBuildStandardItemTooltipCanonicalPayload(
                 normalizedItemId,
+                language,
                 out payload))
         {
             sourceKind = StructuredTooltipItemSourceKind.Item;
@@ -563,6 +624,7 @@ public unsafe partial class Echoglossian
 
         if (TryBuildDeepDungeonItemCanonicalPayload(
                 rawItemId,
+                language,
                 out payload))
         {
             sourceKind = StructuredTooltipItemSourceKind.DeepDungeonItem;
@@ -594,16 +656,18 @@ public unsafe partial class Echoglossian
     ///     <c>Item</c> sheet.
     /// </summary>
     /// <param name="itemId">The normalized <c>Item</c> row identifier.</param>
+    /// <param name="language">The game-data language to read.</param>
     /// <param name="payload">The resolved payload.</param>
     /// <returns>True when the payload resolved successfully.</returns>
     private static bool TryBuildStandardItemTooltipCanonicalPayload(
         uint itemId,
+        ClientLanguage language,
         out ItemTooltipCanonicalPayload payload)
     {
         payload = new ItemTooltipCanonicalPayload();
 
         var itemSheet =
-            DManager.GetExcelSheet<ItemSheet>(ClientStateInterface.ClientLanguage);
+            DManager.GetExcelSheet<ItemSheet>(language);
         if (itemSheet == null || !itemSheet.TryGetRow(itemId, out var itemRow))
         {
             return false;
@@ -631,17 +695,18 @@ public unsafe partial class Echoglossian
     ///     sheet.
     /// </summary>
     /// <param name="eventItemId">The <c>EventItem</c> row identifier.</param>
+    /// <param name="language">The game-data language to read.</param>
     /// <param name="payload">The resolved payload.</param>
     /// <returns>True when the payload resolved successfully.</returns>
     private static bool TryBuildEventItemCanonicalPayload(
         uint eventItemId,
+        ClientLanguage language,
         out ItemTooltipCanonicalPayload payload)
     {
         payload = new ItemTooltipCanonicalPayload();
 
         var eventItemSheet =
-            DManager.GetExcelSheet<EventItemSheet>(
-                ClientStateInterface.ClientLanguage);
+            DManager.GetExcelSheet<EventItemSheet>(language);
         if (eventItemSheet == null ||
             !eventItemSheet.TryGetRow(eventItemId, out var eventItemRow))
         {
@@ -671,17 +736,18 @@ public unsafe partial class Echoglossian
     /// <param name="deepDungeonItemId">
     ///     The <c>DeepDungeonItem</c> row identifier.
     /// </param>
+    /// <param name="language">The game-data language to read.</param>
     /// <param name="payload">The resolved payload.</param>
     /// <returns>True when the payload resolved successfully.</returns>
     private static bool TryBuildDeepDungeonItemCanonicalPayload(
         uint deepDungeonItemId,
+        ClientLanguage language,
         out ItemTooltipCanonicalPayload payload)
     {
         payload = new ItemTooltipCanonicalPayload();
 
         var sheet =
-            DManager.GetExcelSheet<DeepDungeonItemSheet>(
-                ClientStateInterface.ClientLanguage);
+            DManager.GetExcelSheet<DeepDungeonItemSheet>(language);
         if (sheet == null ||
             !sheet.TryGetRow(deepDungeonItemId, out var row))
         {

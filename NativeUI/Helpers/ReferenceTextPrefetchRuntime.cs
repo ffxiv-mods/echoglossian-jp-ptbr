@@ -1003,7 +1003,7 @@ public unsafe partial class Echoglossian
         CreateReferenceTextPrefetchRegistration<TRow>(
             string key,
             TryCollectReferenceIdsDelegate tryCollectReferenceIds,
-            TryBuildReferencePayloadDelegate tryBuildPayload,
+            TryBuildLocalizedReferencePayloadDelegate tryBuildPayload,
             ReferenceTextCacheStore<TRow> cacheStore,
             Func<EchoglossianDbContext, DbSet<TRow>> setSelector,
             Func<bool>? isEnabled = null,
@@ -1016,7 +1016,8 @@ public unsafe partial class Echoglossian
             Key = key,
             IsEnabled = isEnabled ?? (() => true),
             TryCollectReferenceIds = tryCollectReferenceIds,
-            TryBuildPayload = tryBuildPayload,
+            TryBuildPayload = (uint referenceId, out ReferenceTextCanonicalPayload payload) =>
+                tryBuildPayload(referenceId, ClientStateInterface.ClientLanguage, out payload),
             BuildSourceHash = (payload, scope, version) => rowFactory(
                 scope.SourceLanguageCode,
                 scope.TargetLanguageCode,
@@ -1048,11 +1049,66 @@ public unsafe partial class Echoglossian
                     payload, version, source, scope,
                     BuildReferenceTextOriginContext(key, payload, "Fields"),
                     (fields, capturedSource, target, origin, cancellationToken) =>
-                        translationService.TranslateFieldsAsync(
-                            fields, capturedSource, target, resolution, origin, cancellationToken),
+                        this.TranslateReferenceFieldsPreferringJapaneseAsync(
+                            fields,
+                            capturedSource,
+                            target,
+                            payload.ReferenceId,
+                            tryBuildPayload,
+                            (requestFields, requestSource) => translationService.TranslateFieldsAsync(
+                                requestFields, requestSource, target, resolution, origin, cancellationToken)),
                     token, priority);
             },
         };
+    }
+
+    /// <summary>
+    ///     Translates reference-text fields, sending the Japanese row's fields
+    ///     to the engine when the Japanese source-text option applies.
+    /// </summary>
+    /// <param name="fields">The client-language fields still missing a translation.</param>
+    /// <param name="clientSource">The captured client source language.</param>
+    /// <param name="targetLanguage">The target language code.</param>
+    /// <param name="referenceId">The sheet row identifier shared by every language.</param>
+    /// <param name="tryBuildPayload">Builds the payload in one game-data language.</param>
+    /// <param name="translateFieldsAsync">Translates a field batch from a source language.</param>
+    /// <returns>The translated field batch.</returns>
+    private Task<TranslationFieldBatchResult> TranslateReferenceFieldsPreferringJapaneseAsync(
+        IReadOnlyList<TranslationField> fields,
+        SourceClientLanguage clientSource,
+        string targetLanguage,
+        uint referenceId,
+        TryBuildLocalizedReferencePayloadDelegate tryBuildPayload,
+        Func<IReadOnlyList<TranslationField>, SourceClientLanguage, Task<TranslationFieldBatchResult>> translateFieldsAsync)
+    {
+        IReadOnlyList<TranslationField>? japaneseFields = null;
+        SourceClientLanguage? japaneseSource = null;
+        if (this.SourceTextLanguagePolicy.TryGetAlternateSource(
+                clientSource,
+                targetLanguage,
+                out var alternateSource) &&
+            tryBuildPayload(referenceId, ClientLanguage.Japanese, out var japanesePayload))
+        {
+            japaneseSource = alternateSource;
+            japaneseFields = fields
+                .Select(field => new TranslationField(
+                    field.Name,
+                    field.Name switch
+                    {
+                        "Name" => japanesePayload.Name ?? string.Empty,
+                        "Description" => japanesePayload.Description ?? string.Empty,
+                        _ => string.Empty,
+                    }))
+                .ToArray();
+        }
+
+        return SourceTextTranslation.TranslateFieldsPreferringAlternateAsync(
+            fields,
+            clientSource,
+            japaneseFields,
+            japaneseSource,
+            targetLanguage,
+            translateFieldsAsync);
     }
 
     /// <summary>Loads and publishes one registration-level canonical snapshot.</summary>
@@ -1542,11 +1598,29 @@ public unsafe partial class Echoglossian
         uint referenceId,
         out ReferenceTextCanonicalPayload payload)
     {
+        return TryBuildGeneralActionPayload(
+            referenceId,
+            ClientStateInterface.ClientLanguage,
+            out payload);
+    }
+
+    /// <summary>
+    ///     Tries to build one canonical GeneralAction payload from sheets.
+    /// </summary>
+    /// <param name="referenceId">The GeneralAction row identifier.</param>
+    /// <param name="language">The game-data language to read.</param>
+    /// <param name="payload">The resolved payload.</param>
+    /// <returns>True when the payload resolved successfully.</returns>
+    private static bool TryBuildGeneralActionPayload(
+        uint referenceId,
+        ClientLanguage language,
+        out ReferenceTextCanonicalPayload payload)
+    {
         payload = new ReferenceTextCanonicalPayload();
 
         var sheet =
             DManager.GetExcelSheet<GeneralActionSheet>(
-                ClientStateInterface.ClientLanguage);
+                language);
         if (sheet == null || !sheet.TryGetRow(referenceId, out var row))
         {
             return false;
@@ -1571,11 +1645,29 @@ public unsafe partial class Echoglossian
         uint referenceId,
         out ReferenceTextCanonicalPayload payload)
     {
+        return TryBuildBuddyActionPayload(
+            referenceId,
+            ClientStateInterface.ClientLanguage,
+            out payload);
+    }
+
+    /// <summary>
+    ///     Tries to build one canonical BuddyAction payload from sheets.
+    /// </summary>
+    /// <param name="referenceId">The BuddyAction row identifier.</param>
+    /// <param name="language">The game-data language to read.</param>
+    /// <param name="payload">The resolved payload.</param>
+    /// <returns>True when the payload resolved successfully.</returns>
+    private static bool TryBuildBuddyActionPayload(
+        uint referenceId,
+        ClientLanguage language,
+        out ReferenceTextCanonicalPayload payload)
+    {
         payload = new ReferenceTextCanonicalPayload();
 
         var sheet =
             DManager.GetExcelSheet<BuddyActionSheet>(
-                ClientStateInterface.ClientLanguage);
+                language);
         if (sheet == null || !sheet.TryGetRow(referenceId, out var row))
         {
             return false;
@@ -1600,11 +1692,29 @@ public unsafe partial class Echoglossian
         uint referenceId,
         out ReferenceTextCanonicalPayload payload)
     {
+        return TryBuildCompanyActionPayload(
+            referenceId,
+            ClientStateInterface.ClientLanguage,
+            out payload);
+    }
+
+    /// <summary>
+    ///     Tries to build one canonical CompanyAction payload from sheets.
+    /// </summary>
+    /// <param name="referenceId">The CompanyAction row identifier.</param>
+    /// <param name="language">The game-data language to read.</param>
+    /// <param name="payload">The resolved payload.</param>
+    /// <returns>True when the payload resolved successfully.</returns>
+    private static bool TryBuildCompanyActionPayload(
+        uint referenceId,
+        ClientLanguage language,
+        out ReferenceTextCanonicalPayload payload)
+    {
         payload = new ReferenceTextCanonicalPayload();
 
         var sheet =
             DManager.GetExcelSheet<CompanyActionSheet>(
-                ClientStateInterface.ClientLanguage);
+                language);
         if (sheet == null || !sheet.TryGetRow(referenceId, out var row))
         {
             return false;
@@ -1629,11 +1739,29 @@ public unsafe partial class Echoglossian
         uint referenceId,
         out ReferenceTextCanonicalPayload payload)
     {
+        return TryBuildCraftActionPayload(
+            referenceId,
+            ClientStateInterface.ClientLanguage,
+            out payload);
+    }
+
+    /// <summary>
+    ///     Tries to build one canonical CraftAction payload from sheets.
+    /// </summary>
+    /// <param name="referenceId">The CraftAction row identifier.</param>
+    /// <param name="language">The game-data language to read.</param>
+    /// <param name="payload">The resolved payload.</param>
+    /// <returns>True when the payload resolved successfully.</returns>
+    private static bool TryBuildCraftActionPayload(
+        uint referenceId,
+        ClientLanguage language,
+        out ReferenceTextCanonicalPayload payload)
+    {
         payload = new ReferenceTextCanonicalPayload();
 
         var sheet =
             DManager.GetExcelSheet<CraftActionSheet>(
-                ClientStateInterface.ClientLanguage);
+                language);
         if (sheet == null || !sheet.TryGetRow(referenceId, out var row))
         {
             return false;
@@ -1658,11 +1786,29 @@ public unsafe partial class Echoglossian
         uint referenceId,
         out ReferenceTextCanonicalPayload payload)
     {
+        return TryBuildPetActionPayload(
+            referenceId,
+            ClientStateInterface.ClientLanguage,
+            out payload);
+    }
+
+    /// <summary>
+    ///     Tries to build one canonical PetAction payload from sheets.
+    /// </summary>
+    /// <param name="referenceId">The PetAction row identifier.</param>
+    /// <param name="language">The game-data language to read.</param>
+    /// <param name="payload">The resolved payload.</param>
+    /// <returns>True when the payload resolved successfully.</returns>
+    private static bool TryBuildPetActionPayload(
+        uint referenceId,
+        ClientLanguage language,
+        out ReferenceTextCanonicalPayload payload)
+    {
         payload = new ReferenceTextCanonicalPayload();
 
         var sheet =
             DManager.GetExcelSheet<PetActionSheet>(
-                ClientStateInterface.ClientLanguage);
+                language);
         if (sheet == null || !sheet.TryGetRow(referenceId, out var row))
         {
             return false;
@@ -1687,11 +1833,29 @@ public unsafe partial class Echoglossian
         uint referenceId,
         out ReferenceTextCanonicalPayload payload)
     {
+        return TryBuildEventActionPayload(
+            referenceId,
+            ClientStateInterface.ClientLanguage,
+            out payload);
+    }
+
+    /// <summary>
+    ///     Tries to build one canonical EventAction payload from sheets.
+    /// </summary>
+    /// <param name="referenceId">The EventAction row identifier.</param>
+    /// <param name="language">The game-data language to read.</param>
+    /// <param name="payload">The resolved payload.</param>
+    /// <returns>True when the payload resolved successfully.</returns>
+    private static bool TryBuildEventActionPayload(
+        uint referenceId,
+        ClientLanguage language,
+        out ReferenceTextCanonicalPayload payload)
+    {
         payload = new ReferenceTextCanonicalPayload();
 
         var sheet =
             DManager.GetExcelSheet<EventActionSheet>(
-                ClientStateInterface.ClientLanguage);
+                language);
         if (sheet == null || !sheet.TryGetRow(referenceId, out var row))
         {
             return false;
@@ -1716,11 +1880,29 @@ public unsafe partial class Echoglossian
         uint referenceId,
         out ReferenceTextCanonicalPayload payload)
     {
+        return TryBuildEventItemPayload(
+            referenceId,
+            ClientStateInterface.ClientLanguage,
+            out payload);
+    }
+
+    /// <summary>
+    ///     Tries to build one canonical EventItem payload from sheets.
+    /// </summary>
+    /// <param name="referenceId">The EventItem row identifier.</param>
+    /// <param name="language">The game-data language to read.</param>
+    /// <param name="payload">The resolved payload.</param>
+    /// <returns>True when the payload resolved successfully.</returns>
+    private static bool TryBuildEventItemPayload(
+        uint referenceId,
+        ClientLanguage language,
+        out ReferenceTextCanonicalPayload payload)
+    {
         payload = new ReferenceTextCanonicalPayload();
 
         var sheet =
             DManager.GetExcelSheet<EventItemSheet>(
-                ClientStateInterface.ClientLanguage);
+                language);
         if (sheet == null || !sheet.TryGetRow(referenceId, out var row))
         {
             return false;
@@ -1745,14 +1927,32 @@ public unsafe partial class Echoglossian
         uint referenceId,
         out ReferenceTextCanonicalPayload payload)
     {
+        return TryBuildBgcArmyActionPayload(
+            referenceId,
+            ClientStateInterface.ClientLanguage,
+            out payload);
+    }
+
+    /// <summary>
+    ///     Tries to build one canonical BgcArmyAction payload from sheets.
+    /// </summary>
+    /// <param name="referenceId">The BgcArmyAction row identifier.</param>
+    /// <param name="language">The game-data language to read.</param>
+    /// <param name="payload">The resolved payload.</param>
+    /// <returns>True when the payload resolved successfully.</returns>
+    private static bool TryBuildBgcArmyActionPayload(
+        uint referenceId,
+        ClientLanguage language,
+        out ReferenceTextCanonicalPayload payload)
+    {
         payload = new ReferenceTextCanonicalPayload();
 
         var sheet =
             DManager.GetExcelSheet<BgcArmyActionSheet>(
-                ClientStateInterface.ClientLanguage);
+                language);
         var transientSheet =
             DManager.GetExcelSheet<BgcArmyActionTransientSheet>(
-                ClientStateInterface.ClientLanguage);
+                language);
         if (sheet == null ||
             transientSheet == null ||
             !sheet.TryGetRow(referenceId, out var row))
@@ -1761,7 +1961,7 @@ public unsafe partial class Echoglossian
         }
 
         var description = transientSheet.TryGetRow(referenceId, out var transientRow)
-            ? EvaluateSheetText(transientRow.Text)
+            ? EvaluateSheetText(transientRow.Text, language)
             : null;
         return TryBuildDirectReferenceTextPayload(
             row.RowId,
@@ -1782,14 +1982,32 @@ public unsafe partial class Echoglossian
         uint referenceId,
         out ReferenceTextCanonicalPayload payload)
     {
+        return TryBuildAozActionPayload(
+            referenceId,
+            ClientStateInterface.ClientLanguage,
+            out payload);
+    }
+
+    /// <summary>
+    ///     Tries to build one canonical AozAction payload from sheets.
+    /// </summary>
+    /// <param name="referenceId">The AozAction row identifier.</param>
+    /// <param name="language">The game-data language to read.</param>
+    /// <param name="payload">The resolved payload.</param>
+    /// <returns>True when the payload resolved successfully.</returns>
+    private static bool TryBuildAozActionPayload(
+        uint referenceId,
+        ClientLanguage language,
+        out ReferenceTextCanonicalPayload payload)
+    {
         payload = new ReferenceTextCanonicalPayload();
 
         var sheet =
             DManager.GetExcelSheet<AozActionSheet>(
-                ClientStateInterface.ClientLanguage);
+                language);
         var transientSheet =
             DManager.GetExcelSheet<AozActionTransientSheet>(
-                ClientStateInterface.ClientLanguage);
+                language);
         if (sheet == null ||
             transientSheet == null ||
             !sheet.TryGetRow(referenceId, out var row) ||
@@ -1802,7 +2020,7 @@ public unsafe partial class Echoglossian
         uint? iconId = null;
         if (transientSheet.TryGetRow(referenceId, out var transientRow))
         {
-            description = EvaluateSheetText(transientRow.Description);
+            description = EvaluateSheetText(transientRow.Description, language);
             iconId = transientRow.Icon;
         }
 
@@ -1811,6 +2029,7 @@ public unsafe partial class Echoglossian
             row.Action.RowId,
             iconId,
             description,
+            language,
             out payload);
     }
 
@@ -1824,11 +2043,29 @@ public unsafe partial class Echoglossian
         uint referenceId,
         out ReferenceTextCanonicalPayload payload)
     {
+        return TryBuildPvPActionPayload(
+            referenceId,
+            ClientStateInterface.ClientLanguage,
+            out payload);
+    }
+
+    /// <summary>
+    ///     Tries to build one canonical PvPAction payload from sheets.
+    /// </summary>
+    /// <param name="referenceId">The PvPAction row identifier.</param>
+    /// <param name="language">The game-data language to read.</param>
+    /// <param name="payload">The resolved payload.</param>
+    /// <returns>True when the payload resolved successfully.</returns>
+    private static bool TryBuildPvPActionPayload(
+        uint referenceId,
+        ClientLanguage language,
+        out ReferenceTextCanonicalPayload payload)
+    {
         payload = new ReferenceTextCanonicalPayload();
 
         var sheet =
             DManager.GetExcelSheet<PvPActionSheet>(
-                ClientStateInterface.ClientLanguage);
+                language);
         if (sheet == null ||
             !sheet.TryGetRow(referenceId, out var row) ||
             row.Action.RowId == 0)
@@ -1841,6 +2078,7 @@ public unsafe partial class Echoglossian
             row.Action.RowId,
             iconOverride: null,
             descriptionOverride: null,
+            language,
             out payload);
     }
 
@@ -1854,11 +2092,29 @@ public unsafe partial class Echoglossian
         uint referenceId,
         out ReferenceTextCanonicalPayload payload)
     {
+        return TryBuildMountActionPayload(
+            referenceId,
+            ClientStateInterface.ClientLanguage,
+            out payload);
+    }
+
+    /// <summary>
+    ///     Tries to build one canonical MountAction payload from sheets.
+    /// </summary>
+    /// <param name="referenceId">The MountAction row identifier.</param>
+    /// <param name="language">The game-data language to read.</param>
+    /// <param name="payload">The resolved payload.</param>
+    /// <returns>True when the payload resolved successfully.</returns>
+    private static bool TryBuildMountActionPayload(
+        uint referenceId,
+        ClientLanguage language,
+        out ReferenceTextCanonicalPayload payload)
+    {
         payload = new ReferenceTextCanonicalPayload();
 
         var sheet =
             DManager.GetExcelSheet<MountActionSheet>(
-                ClientStateInterface.ClientLanguage);
+                language);
         if (sheet == null || !sheet.TryGetRow(referenceId, out var row))
         {
             return false;
@@ -1886,6 +2142,7 @@ public unsafe partial class Echoglossian
             actionId,
             iconOverride: null,
             descriptionOverride: null,
+            language,
             out payload);
     }
 
@@ -1899,11 +2156,29 @@ public unsafe partial class Echoglossian
         uint referenceId,
         out ReferenceTextCanonicalPayload payload)
     {
+        return TryBuildMainCommandPayload(
+            referenceId,
+            ClientStateInterface.ClientLanguage,
+            out payload);
+    }
+
+    /// <summary>
+    ///     Tries to build one canonical MainCommand payload from sheets.
+    /// </summary>
+    /// <param name="referenceId">The MainCommand row identifier.</param>
+    /// <param name="language">The game-data language to read.</param>
+    /// <param name="payload">The resolved payload.</param>
+    /// <returns>True when the payload resolved successfully.</returns>
+    private static bool TryBuildMainCommandPayload(
+        uint referenceId,
+        ClientLanguage language,
+        out ReferenceTextCanonicalPayload payload)
+    {
         payload = new ReferenceTextCanonicalPayload();
 
         var sheet =
             DManager.GetExcelSheet<MainCommandSheet>(
-                ClientStateInterface.ClientLanguage);
+                language);
         if (sheet == null || !sheet.TryGetRow(referenceId, out var row))
         {
             return false;
@@ -1968,11 +2243,29 @@ public unsafe partial class Echoglossian
         uint referenceId,
         out ReferenceTextCanonicalPayload payload)
     {
+        return TryBuildEurekaMagiaActionPayload(
+            referenceId,
+            ClientStateInterface.ClientLanguage,
+            out payload);
+    }
+
+    /// <summary>
+    ///     Tries to build one canonical EurekaMagiaAction payload from sheets.
+    /// </summary>
+    /// <param name="referenceId">The EurekaMagiaAction row identifier.</param>
+    /// <param name="language">The game-data language to read.</param>
+    /// <param name="payload">The resolved payload.</param>
+    /// <returns>True when the payload resolved successfully.</returns>
+    private static bool TryBuildEurekaMagiaActionPayload(
+        uint referenceId,
+        ClientLanguage language,
+        out ReferenceTextCanonicalPayload payload)
+    {
         payload = new ReferenceTextCanonicalPayload();
 
         var sheet =
             DManager.GetExcelSheet<EurekaMagiaActionSheet>(
-                ClientStateInterface.ClientLanguage);
+                language);
         if (sheet == null ||
             !sheet.TryGetRow(referenceId, out var row) ||
             row.Action.RowId == 0)
@@ -1985,6 +2278,7 @@ public unsafe partial class Echoglossian
             row.Action.RowId,
             iconOverride: null,
             descriptionOverride: null,
+            language,
             out payload);
     }
 
@@ -1998,11 +2292,29 @@ public unsafe partial class Echoglossian
         uint referenceId,
         out ReferenceTextCanonicalPayload payload)
     {
+        return TryBuildDeepDungeonItemPayload(
+            referenceId,
+            ClientStateInterface.ClientLanguage,
+            out payload);
+    }
+
+    /// <summary>
+    ///     Tries to build one canonical DeepDungeonItem payload from sheets.
+    /// </summary>
+    /// <param name="referenceId">The DeepDungeonItem row identifier.</param>
+    /// <param name="language">The game-data language to read.</param>
+    /// <param name="payload">The resolved payload.</param>
+    /// <returns>True when the payload resolved successfully.</returns>
+    private static bool TryBuildDeepDungeonItemPayload(
+        uint referenceId,
+        ClientLanguage language,
+        out ReferenceTextCanonicalPayload payload)
+    {
         payload = new ReferenceTextCanonicalPayload();
 
         var sheet =
             DManager.GetExcelSheet<DeepDungeonItemSheet>(
-                ClientStateInterface.ClientLanguage);
+                language);
         if (sheet == null || !sheet.TryGetRow(referenceId, out var row))
         {
             return false;
@@ -2123,6 +2435,7 @@ public unsafe partial class Echoglossian
     /// <param name="actionId">The linked Action row identifier.</param>
     /// <param name="iconOverride">The icon override, when the source sheet provides one.</param>
     /// <param name="descriptionOverride">The description override, when the source sheet provides one.</param>
+    /// <param name="language">The game-data language to read.</param>
     /// <param name="payload">The resolved payload.</param>
     /// <returns>True when the payload resolved successfully.</returns>
     private static bool TryBuildActionReferenceTextPayload(
@@ -2130,15 +2443,15 @@ public unsafe partial class Echoglossian
         uint actionId,
         uint? iconOverride,
         string? descriptionOverride,
+        ClientLanguage language,
         out ReferenceTextCanonicalPayload payload)
     {
         payload = new ReferenceTextCanonicalPayload();
 
         var actionSheet =
-            DManager.GetExcelSheet<ActionSheet>(ClientStateInterface.ClientLanguage);
+            DManager.GetExcelSheet<ActionSheet>(language);
         var transientSheet =
-            DManager.GetExcelSheet<ActionTransientSheet>(
-                ClientStateInterface.ClientLanguage);
+            DManager.GetExcelSheet<ActionTransientSheet>(language);
         if (actionSheet == null ||
             transientSheet == null ||
             actionId == 0 ||
@@ -2492,6 +2805,19 @@ public unsafe partial class Echoglossian
     /// <returns>True when the payload resolved successfully.</returns>
     private delegate bool TryBuildReferencePayloadDelegate(
         uint referenceId,
+        out ReferenceTextCanonicalPayload payload);
+
+    /// <summary>
+    ///     Tries to build one canonical payload from one sheet-row identifier
+    ///     in one game-data language.
+    /// </summary>
+    /// <param name="referenceId">The sheet-row identifier.</param>
+    /// <param name="language">The game-data language to read.</param>
+    /// <param name="payload">The resolved payload.</param>
+    /// <returns>True when the payload resolved successfully.</returns>
+    private delegate bool TryBuildLocalizedReferencePayloadDelegate(
+        uint referenceId,
+        ClientLanguage language,
         out ReferenceTextCanonicalPayload payload);
 }
 
