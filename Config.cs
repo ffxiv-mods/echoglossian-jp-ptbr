@@ -823,6 +823,14 @@ public class Config : IPluginConfiguration
   /// </summary>
   [DefaultValue(false)] public bool TranslateAlreadyTranslatedTexts = false;
 
+  /// <summary>
+  ///     When the game client is not Japanese, send the Japanese original text
+  ///     (read from the game data sheets) to the translation engine for the
+  ///     surfaces that can resolve it. Surfaces that cannot resolve the Japanese
+  ///     original keep translating from the client language.
+  /// </summary>
+  [DefaultValue(false)] public bool UseJapaneseSourceText = false;
+
   /// <summary>Translate area name toasts.</summary>
   [DefaultValue(false)] public bool TranslateAreaToast = false;
 

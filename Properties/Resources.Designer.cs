@@ -4346,7 +4346,40 @@ namespace Echoglossian.Properties
         }
         
         /// <summary>
-        ///     Pesquisa uma cadeia de caracteres localizada semelhante a Translate again stored translated texts with the selected translation engine.
+        ///     Looks up a localized string similar to Translate from the Japanese original text (non-Japanese client).
+        /// </summary>
+        public static string UseJapaneseSourceTextLabel
+        {
+            get
+            {
+                return ResourceManager.GetString("UseJapaneseSourceTextLabel", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///     Looks up a localized string similar to the Japanese source text option tooltip.
+        /// </summary>
+        public static string UseJapaneseSourceTextTooltip
+        {
+            get
+            {
+                return ResourceManager.GetString("UseJapaneseSourceTextTooltip", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///     Looks up a localized string similar to The game client is already Japanese.
+        /// </summary>
+        public static string UseJapaneseSourceTextUnavailable
+        {
+            get
+            {
+                return ResourceManager.GetString("UseJapaneseSourceTextUnavailable", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///     Looks up a localized string similar to Translate again stored translated texts with the selected translation engine.
         /// </summary>
         public static string TranslateTextsAgain
         {

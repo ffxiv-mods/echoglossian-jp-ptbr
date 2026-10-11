@@ -51,6 +51,8 @@ public static class TranslationEnginesTab
             Resources.TranslateTextsAgain,
             ref config.TranslateAlreadyTranslatedTexts);
 
+        changed |= DrawJapaneseSourceTextOption(config);
+
         var supportedEngines =
             langDict.TryGetValue(languageIndex, out var langInfo)
                 ? langInfo.SupportedEngines ?? new List<int>()
@@ -148,6 +150,41 @@ public static class TranslationEnginesTab
     /// <param name="promptManager">The shared prompt template manager.</param>
     /// <param name="engine">The engine whose configuration should be shown.</param>
     /// <returns><see langword="true" /> when the configuration changed.</returns>
+    /// <summary>
+    ///     Draws the option that translates from the Japanese original text
+    ///     while the game client runs in another language.
+    /// </summary>
+    /// <param name="config">The configuration object to update.</param>
+    /// <returns>True if the option changed; otherwise, false.</returns>
+    private static bool DrawJapaneseSourceTextOption(Config config)
+    {
+        var clientIsJapanese = ClientStateInterface is not null &&
+                               ClientStateInterface.ClientLanguage == ClientLanguage.Japanese;
+        var changed = false;
+
+        ImGui.BeginDisabled(clientIsJapanese);
+        changed |= ImGui.Checkbox(
+            Resources.UseJapaneseSourceTextLabel,
+            ref config.UseJapaneseSourceText);
+        ImGui.EndDisabled();
+
+        ImGui.SameLine();
+        ImGui.Text(Resources.HoverTooltipIndicator);
+        if (ImGui.IsItemHovered())
+        {
+            ImGui.BeginTooltip();
+            ImGui.PushTextWrapPos(ImGui.GetFontSize() * 35f);
+            ImGui.TextUnformatted(
+                clientIsJapanese
+                    ? Resources.UseJapaneseSourceTextUnavailable
+                    : Resources.UseJapaneseSourceTextTooltip);
+            ImGui.PopTextWrapPos();
+            ImGui.EndTooltip();
+        }
+
+        return changed;
+    }
+
     private static bool DrawEngineConfiguration(
         Config config,
         PromptTemplateManager promptManager,

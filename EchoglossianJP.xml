@@ -2538,6 +2538,14 @@
                 cached.
             </summary>
         </member>
+        <member name="F:Echoglossian.Config.UseJapaneseSourceText">
+            <summary>
+                When the game client is not Japanese, send the Japanese original text
+                (read from the game data sheets) to the translation engine for the
+                surfaces that can resolve it. Surfaces that cannot resolve the Japanese
+                original keep translating from the client language.
+            </summary>
+        </member>
         <member name="F:Echoglossian.Config.TranslateAreaToast">
             <summary>Translate area name toasts.</summary>
         </member>
@@ -13696,6 +13704,104 @@
         </member>
         <member name="P:Echoglossian.SourceClientLanguage.ProviderCode">
             <summary>The code supplied to translation providers.</summary>
+        </member>
+        <member name="T:Echoglossian.ISourceTextLanguagePolicy">
+            <summary>
+                Decides whether a translation operation should send an alternate
+                source-language text (read from game data) to the translation engine
+                instead of the text captured in the client language.
+            </summary>
+        </member>
+        <member name="M:Echoglossian.ISourceTextLanguagePolicy.TryGetAlternateSource(Echoglossian.SourceClientLanguage,System.String,Echoglossian.SourceClientLanguage@)">
+            <summary>
+                Resolves the alternate source language for one operation.
+            </summary>
+            <param name="clientSource">
+                The source language captured from the client for the operation.
+            </param>
+            <param name="targetLanguageCode">The operation target language code.</param>
+            <param name="alternateSource">
+                The alternate source language when the policy applies.
+            </param>
+            <returns>
+                <see langword="true" /> when the operation should prefer the
+                alternate source text; otherwise <see langword="false" />.
+            </returns>
+        </member>
+        <member name="T:Echoglossian.JapaneseSourceTextPolicy">
+            <summary>
+                Prefers the Japanese original text as translation input when the user
+                enabled <see cref="F:Echoglossian.Config.UseJapaneseSourceText" /> and neither the
+                client nor the target language is already Japanese.
+            </summary>
+        </member>
+        <member name="M:Echoglossian.JapaneseSourceTextPolicy.#ctor(Echoglossian.Config)">
+            <summary>
+                Initializes a new instance of the <see cref="T:Echoglossian.JapaneseSourceTextPolicy" /> class
+                bound to the live plugin configuration.
+            </summary>
+            <param name="configuration">The live plugin configuration.</param>
+        </member>
+        <member name="M:Echoglossian.JapaneseSourceTextPolicy.#ctor(System.Func{System.Boolean})">
+            <summary>
+                Initializes a new instance of the <see cref="T:Echoglossian.JapaneseSourceTextPolicy" /> class.
+            </summary>
+            <param name="isEnabled">Reads whether the option is currently enabled.</param>
+        </member>
+        <member name="M:Echoglossian.JapaneseSourceTextPolicy.TryGetAlternateSource(Echoglossian.SourceClientLanguage,System.String,Echoglossian.SourceClientLanguage@)">
+            <inheritdoc />
+        </member>
+        <member name="T:Echoglossian.SourceTextTranslation">
+            <summary>
+                Translates an alternate source text (for example the Japanese original)
+                when one is available and falls back to the client-language text when
+                the alternate text is missing or its translation is unusable.
+            </summary>
+            <remarks>
+                Only the engine input changes: callers keep persisting and looking up
+                the client-language original, so DB semantics stay unchanged.
+            </remarks>
+        </member>
+        <member name="M:Echoglossian.SourceTextTranslation.TranslatePreferringAlternate(System.String,Echoglossian.SourceClientLanguage,System.String,System.Nullable{Echoglossian.SourceClientLanguage},System.String,System.Func{System.String,Echoglossian.SourceClientLanguage,System.String})">
+            <summary>
+                Translates the alternate text, falling back to the client text.
+            </summary>
+            <param name="clientText">The text captured in the client language.</param>
+            <param name="clientSource">The client source language.</param>
+            <param name="alternateText">The alternate source text, if resolved.</param>
+            <param name="alternateSource">The alternate source language, if any.</param>
+            <param name="targetLanguage">The target language code.</param>
+            <param name="translate">Translates a text from a source language.</param>
+            <returns>The translated text.</returns>
+        </member>
+        <member name="M:Echoglossian.SourceTextTranslation.TranslatePreferringAlternateAsync(System.String,Echoglossian.SourceClientLanguage,System.String,System.Nullable{Echoglossian.SourceClientLanguage},System.String,System.Func{System.String,Echoglossian.SourceClientLanguage,System.Threading.Tasks.Task{System.String}})">
+            <summary>
+                Asynchronously translates the alternate text, falling back to the
+                client text.
+            </summary>
+            <param name="clientText">The text captured in the client language.</param>
+            <param name="clientSource">The client source language.</param>
+            <param name="alternateText">The alternate source text, if resolved.</param>
+            <param name="alternateSource">The alternate source language, if any.</param>
+            <param name="targetLanguage">The target language code.</param>
+            <param name="translateAsync">Translates a text from a source language.</param>
+            <returns>The translated text.</returns>
+        </member>
+        <member name="M:Echoglossian.SourceTextTranslation.TranslateFieldsPreferringAlternateAsync(System.Collections.Generic.IReadOnlyList{Echoglossian.Translators.TranslationField},Echoglossian.SourceClientLanguage,System.Collections.Generic.IReadOnlyList{Echoglossian.Translators.TranslationField},System.Nullable{Echoglossian.SourceClientLanguage},System.String,System.Func{System.Collections.Generic.IReadOnlyList{Echoglossian.Translators.TranslationField},Echoglossian.SourceClientLanguage,System.Threading.Tasks.Task{Echoglossian.Translators.TranslationFieldBatchResult}})">
+            <summary>
+                Translates a field batch from the alternate source, re-translating
+                from the client source only the fields whose alternate value is
+                missing or unusable.
+            </summary>
+            <param name="clientFields">The fields captured in the client language.</param>
+            <param name="clientSource">The client source language.</param>
+            <param name="alternateFields">
+                The alternate source fields keyed by the same field names, if any.
+            </param>
+            <param name="alternateSource">The alternate source language, if any.</param>
+            <param name="targetLanguage">The target language code.</param>
+            <param name="translateFieldsAsync">Translates a field batch from a source language.</param>
+            <returns>The merged translated field batch in client field order.</returns>
         </member>
         <member name="T:Echoglossian.TargetLanguageRuntimeState">
             <summary>
@@ -36397,7 +36503,7 @@
             </param>
             <returns>True if any settings were changed; otherwise, false.</returns>
         </member>
-        <member name="M:Echoglossian.PluginUI.Tabs.TranslationEnginesTab.DrawEngineConfiguration(Echoglossian.Config,Echoglossian.PluginUI.Helpers.PromptTemplateManager,Echoglossian.Echoglossian.TransEngines,System.Boolean)">
+        <member name="M:Echoglossian.PluginUI.Tabs.TranslationEnginesTab.DrawJapaneseSourceTextOption(Echoglossian.Config)">
             <summary>
                 Draws the settings UI for one specific translation engine.
             </summary>
@@ -36405,6 +36511,12 @@
             <param name="promptManager">The shared prompt template manager.</param>
             <param name="engine">The engine whose configuration should be shown.</param>
             <returns><see langword="true" /> when the configuration changed.</returns>
+            <summary>
+                Draws the option that translates from the Japanese original text
+                while the game client runs in another language.
+            </summary>
+            <param name="config">The configuration object to update.</param>
+            <returns>True if the option changed; otherwise, false.</returns>
         </member>
         <member name="M:Echoglossian.PluginUI.Tabs.TranslationEnginesTab.DrawDialogueOverrideSection(Echoglossian.Config,Echoglossian.PluginUI.Helpers.PromptTemplateManager,Echoglossian.Echoglossian.TransEngines,System.Action,System.Boolean)">
             <summary>
@@ -38556,9 +38668,24 @@
                 Pesquisa uma cadeia de caracteres localizada semelhante a Translate Text Gimmick Hint.
             </summary>
         </member>
+        <member name="P:Echoglossian.Properties.Resources.UseJapaneseSourceTextLabel">
+            <summary>
+                Looks up a localized string similar to Translate from the Japanese original text (non-Japanese client).
+            </summary>
+        </member>
+        <member name="P:Echoglossian.Properties.Resources.UseJapaneseSourceTextTooltip">
+            <summary>
+                Looks up a localized string similar to the Japanese source text option tooltip.
+            </summary>
+        </member>
+        <member name="P:Echoglossian.Properties.Resources.UseJapaneseSourceTextUnavailable">
+            <summary>
+                Looks up a localized string similar to The game client is already Japanese.
+            </summary>
+        </member>
         <member name="P:Echoglossian.Properties.Resources.TranslateTextsAgain">
             <summary>
-                Pesquisa uma cadeia de caracteres localizada semelhante a Translate again stored translated texts with the selected translation engine.
+                Looks up a localized string similar to Translate again stored translated texts with the selected translation engine.
             </summary>
         </member>
         <member name="P:Echoglossian.Properties.Resources.TranslateToastToggle">

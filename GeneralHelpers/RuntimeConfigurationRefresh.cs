@@ -116,6 +116,7 @@ public partial class Echoglossian
           this.configuration.Lang,
           this.configuration.Translate,
           this.configuration.TranslateAlreadyTranslatedTexts,
+          this.configuration.UseJapaneseSourceText,
           this.configuration.AiTranslatorPrompt,
           this.configuration.UseDialogueLlmOverride,
           this.configuration.DialogueLlmEngine,

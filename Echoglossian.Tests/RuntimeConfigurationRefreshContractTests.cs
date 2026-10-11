@@ -211,6 +211,26 @@ public sealed class RuntimeConfigurationRefreshContractTests
     }
 
     /// <summary>
+    ///     Ensures toggling the Japanese source-text option resets the
+    ///     translation runtime so in-flight work is not published with the
+    ///     previous source text.
+    /// </summary>
+    [Fact]
+    public void Translation_runtime_signature_includes_japanese_source_text_option()
+    {
+        var root = FindRepositoryRoot();
+        var source = File.ReadAllText(Path.Combine(
+            root.FullName,
+            "GeneralHelpers",
+            "RuntimeConfigurationRefresh.cs"));
+
+        Assert.Contains(
+            "this.configuration.UseJapaneseSourceText,",
+            source,
+            StringComparison.Ordinal);
+    }
+
+    /// <summary>
     ///     Ensures the dialogue-only LLM override contributes to the
     ///     translation runtime signature so override-only saves rebuild the
     ///     live translation service.

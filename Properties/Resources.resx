@@ -496,6 +496,15 @@
   <data name="DeepLTransAPIKey" xml:space="preserve">
     <value>Use API Key (recommended)</value>
   </data>
+  <data name="UseJapaneseSourceTextLabel" xml:space="preserve">
+    <value>Translate from the Japanese original text (non-Japanese client)</value>
+  </data>
+  <data name="UseJapaneseSourceTextTooltip" xml:space="preserve">
+    <value>Quest dialogue (Talk/BattleTalk of accepted quests), quest journal texts, and item/action/trait/reference texts are translated from the Japanese game data instead of the client language. Text whose Japanese original cannot be found keeps translating from the client language. Stored translations are reused, so clear them or use retranslation to compare.</value>
+  </data>
+  <data name="UseJapaneseSourceTextUnavailable" xml:space="preserve">
+    <value>The game client is already Japanese.</value>
+  </data>
   <data name="TranslateTextsAgain" xml:space="preserve">
     <value>Translate again stored translated texts with the selected translation engine</value>
   </data>
