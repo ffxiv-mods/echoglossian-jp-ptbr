@@ -3069,6 +3069,10 @@
                 reference-text sheets used by <c>ActionMenu</c>.
             </summary>
             <summary>
+                Plugin-owned wiring that hands the Japanese source-text option to the
+                addon handlers and prefetch runtimes.
+            </summary>
+            <summary>
                 Handles bootstrap and teardown of the experimental ToastGui-assisted
                 toast capture runtime for supported normal and error toasts.
             </summary>
@@ -7864,6 +7868,27 @@
             <param name="referenceId">The sheet-row identifier.</param>
             <param name="payload">The resolved payload.</param>
             <returns>True when the payload resolved successfully.</returns>
+        </member>
+        <member name="P:Echoglossian.Echoglossian.SourceTextLanguagePolicy">
+            <summary>
+                Gets the policy that decides when the Japanese original is preferred.
+            </summary>
+        </member>
+        <member name="P:Echoglossian.Echoglossian.JapaneseQuestSourceText">
+            <summary>
+                Gets the provider that reads Japanese quest texts from game data.
+            </summary>
+        </member>
+        <member name="M:Echoglossian.Echoglossian.ResolveJapaneseDialogueSourceTextAsync(System.String,Echoglossian.SourceClientLanguage,System.String,System.Threading.CancellationToken)">
+            <summary>
+                Resolves the Japanese original of one visible quest dialogue line
+                when the option applies to the operation.
+            </summary>
+            <param name="originalText">The visible client-language dialogue line.</param>
+            <param name="clientSource">The captured client source language.</param>
+            <param name="targetLanguageCode">The operation target language.</param>
+            <param name="cancellationToken">The handler-owned cancellation token.</param>
+            <returns>The Japanese source text, or <see langword="null" />.</returns>
         </member>
         <member name="M:Echoglossian.Echoglossian.CreateToastGuiCaptureRuntime">
             <summary>
@@ -13704,6 +13729,30 @@
         </member>
         <member name="P:Echoglossian.SourceClientLanguage.ProviderCode">
             <summary>The code supplied to translation providers.</summary>
+        </member>
+        <member name="T:Echoglossian.AlternateSourceText">
+            <summary>
+                Represents a source text read from game data in another language than
+                the client, to be sent to the translation engine instead of the
+                client-language text.
+            </summary>
+            <param name="Text">The alternate source text.</param>
+            <param name="Source">The alternate source language.</param>
+        </member>
+        <member name="M:Echoglossian.AlternateSourceText.#ctor(System.String,Echoglossian.SourceClientLanguage)">
+            <summary>
+                Represents a source text read from game data in another language than
+                the client, to be sent to the translation engine instead of the
+                client-language text.
+            </summary>
+            <param name="Text">The alternate source text.</param>
+            <param name="Source">The alternate source language.</param>
+        </member>
+        <member name="P:Echoglossian.AlternateSourceText.Text">
+            <summary>The alternate source text.</summary>
+        </member>
+        <member name="P:Echoglossian.AlternateSourceText.Source">
+            <summary>The alternate source language.</summary>
         </member>
         <member name="T:Echoglossian.ISourceTextLanguagePolicy">
             <summary>
@@ -25294,7 +25343,7 @@
                 async translation, overlay updates, and optional native text replacement.
             </summary>
         </member>
-        <member name="M:Echoglossian.NativeUI.AddonHandlers.Talk.BattleTalkHandler.#ctor(Echoglossian.Config,Echoglossian.Translators.TranslationService,System.Func{Echoglossian.EFCoreSqlite.Models.BattleTalkMessage,System.Threading.CancellationToken,System.Threading.Tasks.Task{Echoglossian.EFCoreSqlite.Models.BattleTalkMessage}},System.Func{Echoglossian.EFCoreSqlite.Models.BattleTalkMessage,System.Threading.Tasks.Task{System.String}},System.Action{System.String,System.String,System.String},System.Action,System.Func{System.String,System.String},System.Func{System.String,System.String,Echoglossian.SourceClientLanguage,System.Threading.CancellationToken,System.Threading.Tasks.Task{Echoglossian.DialogueInterlocutorHints}})">
+        <member name="M:Echoglossian.NativeUI.AddonHandlers.Talk.BattleTalkHandler.#ctor(Echoglossian.Config,Echoglossian.Translators.TranslationService,System.Func{Echoglossian.EFCoreSqlite.Models.BattleTalkMessage,System.Threading.CancellationToken,System.Threading.Tasks.Task{Echoglossian.EFCoreSqlite.Models.BattleTalkMessage}},System.Func{Echoglossian.EFCoreSqlite.Models.BattleTalkMessage,System.Threading.Tasks.Task{System.String}},System.Action{System.String,System.String,System.String},System.Action,System.Func{System.String,System.String},System.Func{System.String,System.String,Echoglossian.SourceClientLanguage,System.Threading.CancellationToken,System.Threading.Tasks.Task{Echoglossian.DialogueInterlocutorHints}},System.Func{System.String,Echoglossian.SourceClientLanguage,System.String,System.Threading.CancellationToken,System.Threading.Tasks.Task{System.Nullable{Echoglossian.AlternateSourceText}}})">
             <summary>
                 Initializes a new instance of the <see cref="T:Echoglossian.NativeUI.AddonHandlers.Talk.BattleTalkHandler" /> class.
             </summary>
@@ -25319,8 +25368,12 @@
             <param name="resolveInterlocutorHintsAsync">
                 Delegate used to resolve current-line interlocutor hints after a database miss.
             </param>
+            <param name="resolveAlternateSourceTextAsync">
+                Optional resolver of an alternate-language source text (for example
+                the Japanese original) sent to the engine instead of the visible text.
+            </param>
         </member>
-        <member name="M:Echoglossian.NativeUI.AddonHandlers.Talk.BattleTalkHandler.#ctor(Echoglossian.Config,Echoglossian.Translators.TranslationService,System.Func{Echoglossian.EFCoreSqlite.Models.BattleTalkMessage,System.Threading.CancellationToken,System.Threading.Tasks.Task{Echoglossian.EFCoreSqlite.Models.BattleTalkMessage}},System.Func{Echoglossian.EFCoreSqlite.Models.BattleTalkMessage,System.Threading.CancellationToken,System.Threading.Tasks.Task{System.String}},System.Action{System.String,System.String,System.String},System.Action,System.Func{System.String,System.String},System.Func{System.String,System.String,Echoglossian.SourceClientLanguage,System.Threading.CancellationToken,System.Threading.Tasks.Task{Echoglossian.DialogueInterlocutorHints}})">
+        <member name="M:Echoglossian.NativeUI.AddonHandlers.Talk.BattleTalkHandler.#ctor(Echoglossian.Config,Echoglossian.Translators.TranslationService,System.Func{Echoglossian.EFCoreSqlite.Models.BattleTalkMessage,System.Threading.CancellationToken,System.Threading.Tasks.Task{Echoglossian.EFCoreSqlite.Models.BattleTalkMessage}},System.Func{Echoglossian.EFCoreSqlite.Models.BattleTalkMessage,System.Threading.CancellationToken,System.Threading.Tasks.Task{System.String}},System.Action{System.String,System.String,System.String},System.Action,System.Func{System.String,System.String},System.Func{System.String,System.String,Echoglossian.SourceClientLanguage,System.Threading.CancellationToken,System.Threading.Tasks.Task{Echoglossian.DialogueInterlocutorHints}},System.Func{System.String,Echoglossian.SourceClientLanguage,System.String,System.Threading.CancellationToken,System.Threading.Tasks.Task{System.Nullable{Echoglossian.AlternateSourceText}}})">
             <summary>
                 Initializes a BattleTalk handler with cancellation-aware dialogue
                 persistence owned by the captured operation scope.
@@ -25334,6 +25387,9 @@
             <param name="normalizeReplacementText">The native replacement normalizer.</param>
             <param name="resolveInterlocutorHintsAsync">
                 The asynchronous current-line interlocutor hint resolver.
+            </param>
+            <param name="resolveAlternateSourceTextAsync">
+                The optional alternate-language source text resolver.
             </param>
         </member>
         <member name="M:Echoglossian.NativeUI.AddonHandlers.Talk.BattleTalkHandler.GetEventHandlers">
@@ -25522,6 +25578,17 @@
             <param name="sourceOperation">The source generation captured when queued.</param>
             <param name="operationToken">The token owned by the queued operation.</param>
             <returns>A task that completes when the translation state has been updated.</returns>
+        </member>
+        <member name="M:Echoglossian.NativeUI.AddonHandlers.Talk.BattleTalkHandler.ResolveAlternateSourceTextOrDefaultAsync(System.String,Echoglossian.SourceClientLanguage,System.String,System.Threading.CancellationToken)">
+            <summary>
+                Resolves the optional alternate-language source text without letting
+                a resolver failure block the visible-text translation.
+            </summary>
+            <param name="originalText">The visible dialogue text.</param>
+            <param name="sourceLanguage">The captured client source language.</param>
+            <param name="targetLanguageCode">The operation target language.</param>
+            <param name="cancellationToken">The handler-owned cancellation token.</param>
+            <returns>The alternate source text, or <see langword="null" />.</returns>
         </member>
         <member name="M:Echoglossian.NativeUI.AddonHandlers.Talk.BattleTalkHandler.ResolveInterlocutorHintsOrDefaultAsync(System.String,System.String,Echoglossian.SourceClientLanguage,System.Threading.CancellationToken)">
             <summary>
@@ -25902,7 +25969,7 @@
                 updates, and optional native text replacement.
             </summary>
         </member>
-        <member name="M:Echoglossian.NativeUI.AddonHandlers.Talk.TalkHandler.#ctor(Echoglossian.Config,Echoglossian.Translators.TranslationService,System.Func{Echoglossian.EFCoreSqlite.Models.TalkMessage,System.Threading.CancellationToken,System.Threading.Tasks.Task{Echoglossian.EFCoreSqlite.Models.TalkMessage}},System.Func{Echoglossian.EFCoreSqlite.Models.TalkMessage,System.Threading.Tasks.Task{System.String}},System.Action{System.String,System.String,System.String},System.Action,System.Func{System.String,System.String},System.Func{System.String,System.String,Echoglossian.SourceClientLanguage,System.Threading.CancellationToken,System.Threading.Tasks.Task{Echoglossian.DialogueInterlocutorHints}},System.Action)">
+        <member name="M:Echoglossian.NativeUI.AddonHandlers.Talk.TalkHandler.#ctor(Echoglossian.Config,Echoglossian.Translators.TranslationService,System.Func{Echoglossian.EFCoreSqlite.Models.TalkMessage,System.Threading.CancellationToken,System.Threading.Tasks.Task{Echoglossian.EFCoreSqlite.Models.TalkMessage}},System.Func{Echoglossian.EFCoreSqlite.Models.TalkMessage,System.Threading.Tasks.Task{System.String}},System.Action{System.String,System.String,System.String},System.Action,System.Func{System.String,System.String},System.Func{System.String,System.String,Echoglossian.SourceClientLanguage,System.Threading.CancellationToken,System.Threading.Tasks.Task{Echoglossian.DialogueInterlocutorHints}},System.Action,System.Func{System.String,Echoglossian.SourceClientLanguage,System.String,System.Threading.CancellationToken,System.Threading.Tasks.Task{System.Nullable{Echoglossian.AlternateSourceText}}})">
             <summary>
                 Initializes a new instance of the <see cref="T:Echoglossian.NativeUI.AddonHandlers.Talk.TalkHandler" /> class.
             </summary>
@@ -25929,8 +25996,12 @@
             <param name="restoreNativeMutation">
                 Optional native-free override for restoring tracked Talk mutation.
             </param>
+            <param name="resolveAlternateSourceTextAsync">
+                Optional resolver of an alternate-language source text (for example
+                the Japanese original) sent to the engine instead of the visible text.
+            </param>
         </member>
-        <member name="M:Echoglossian.NativeUI.AddonHandlers.Talk.TalkHandler.#ctor(Echoglossian.Config,Echoglossian.Translators.TranslationService,System.Func{Echoglossian.EFCoreSqlite.Models.TalkMessage,System.Threading.CancellationToken,System.Threading.Tasks.Task{Echoglossian.EFCoreSqlite.Models.TalkMessage}},System.Func{Echoglossian.EFCoreSqlite.Models.TalkMessage,System.Threading.CancellationToken,System.Threading.Tasks.Task{System.String}},System.Action{System.String,System.String,System.String},System.Action,System.Func{System.String,System.String},System.Func{System.String,System.String,Echoglossian.SourceClientLanguage,System.Threading.CancellationToken,System.Threading.Tasks.Task{Echoglossian.DialogueInterlocutorHints}},System.Action)">
+        <member name="M:Echoglossian.NativeUI.AddonHandlers.Talk.TalkHandler.#ctor(Echoglossian.Config,Echoglossian.Translators.TranslationService,System.Func{Echoglossian.EFCoreSqlite.Models.TalkMessage,System.Threading.CancellationToken,System.Threading.Tasks.Task{Echoglossian.EFCoreSqlite.Models.TalkMessage}},System.Func{Echoglossian.EFCoreSqlite.Models.TalkMessage,System.Threading.CancellationToken,System.Threading.Tasks.Task{System.String}},System.Action{System.String,System.String,System.String},System.Action,System.Func{System.String,System.String},System.Func{System.String,System.String,Echoglossian.SourceClientLanguage,System.Threading.CancellationToken,System.Threading.Tasks.Task{Echoglossian.DialogueInterlocutorHints}},System.Action,System.Func{System.String,Echoglossian.SourceClientLanguage,System.String,System.Threading.CancellationToken,System.Threading.Tasks.Task{System.Nullable{Echoglossian.AlternateSourceText}}})">
             <summary>
                 Initializes a Talk handler with cancellation-aware dialogue
                 persistence owned by the captured operation scope.
@@ -25946,6 +26017,9 @@
                 The asynchronous current-line interlocutor hint resolver.
             </param>
             <param name="restoreNativeMutation">The optional native restoration override.</param>
+            <param name="resolveAlternateSourceTextAsync">
+                The optional alternate-language source text resolver.
+            </param>
         </member>
         <member name="M:Echoglossian.NativeUI.AddonHandlers.Talk.TalkHandler.GetEventHandlers">
             <summary>
@@ -26207,7 +26281,7 @@
                 background translation work.
             </summary>
         </member>
-        <member name="M:Echoglossian.NativeUI.AddonHandlers.Talk.TalkHandler.ResolveInterlocutorHintsOrDefaultAsync(System.String,System.String,Echoglossian.SourceClientLanguage,System.Threading.CancellationToken)">
+        <member name="M:Echoglossian.NativeUI.AddonHandlers.Talk.TalkHandler.ResolveAlternateSourceTextOrDefaultAsync(System.String,Echoglossian.SourceClientLanguage,System.String,System.Threading.CancellationToken)">
             <summary>
                 Resolves optional Talk metadata without allowing auxiliary failures to
                 abort the dialogue translation.
@@ -26217,6 +26291,15 @@
             <param name="sourceLanguage">The captured source language.</param>
             <param name="cancellationToken">The token that cancels the current source operation.</param>
             <returns>The resolved hints, or an empty hint set after an auxiliary failure.</returns>
+            <summary>
+                Resolves the optional alternate-language source text without letting
+                a resolver failure block the visible-text translation.
+            </summary>
+            <param name="originalText">The visible dialogue text.</param>
+            <param name="sourceLanguage">The captured client source language.</param>
+            <param name="targetLanguageCode">The operation target language.</param>
+            <param name="cancellationToken">The handler-owned cancellation token.</param>
+            <returns>The alternate source text, or <see langword="null" />.</returns>
         </member>
         <member name="M:Echoglossian.NativeUI.AddonHandlers.Talk.TalkHandler.TryGetCurrentResolvedTranslation(Echoglossian.SourceClientLanguage,System.String@,System.String@,System.String@,System.String@)">
             <summary>
@@ -33667,6 +33750,30 @@
             <param name="cancellationToken">The token that cancels asynchronous database lookups.</param>
             <returns>The resolved dialogue metadata; otherwise, <see langword="null" />.</returns>
         </member>
+        <member name="M:Echoglossian.DialogueInterlocutorMetadataResolver.FindAcceptedQuestDialogueRowsAsync(System.String,System.Threading.CancellationToken)">
+            <summary>
+                Finds the accepted-quest dialogue sheet rows whose client-language
+                text matches one visible dialogue line, so callers can read the same
+                row in another game-data language.
+            </summary>
+            <remarks>
+                Exact matches win. When none exist, the local player name is removed
+                from the visible text because quest rows read outside the framework
+                thread drop name macros.
+            </remarks>
+            <param name="visibleText">The visible client-language dialogue text.</param>
+            <param name="cancellationToken">The token that cancels the lookup.</param>
+            <returns>The distinct matching quest dialogue rows.</returns>
+        </member>
+        <member name="M:Echoglossian.DialogueInterlocutorMetadataResolver.BuildPlayerNameStrippedTexts(System.String,System.String)">
+            <summary>
+                Builds visible-text variants without the local player name, its
+                forename, or its surname.
+            </summary>
+            <param name="visibleText">The visible dialogue text.</param>
+            <param name="localPlayerName">The local player full name.</param>
+            <returns>The distinct changed variants.</returns>
+        </member>
         <member name="M:Echoglossian.DialogueInterlocutorMetadataResolver.CaptureSnapshot">
             <summary>
                 Captures native resolver inputs into immutable managed values before
@@ -33674,13 +33781,13 @@
             </summary>
             <returns>The immutable resolver capture.</returns>
         </member>
-        <member name="M:Echoglossian.DialogueInterlocutorMetadataResolver.FindMatchingRows(System.Collections.Generic.IReadOnlyList{Echoglossian.DialogueInterlocutorMetadataResolver.AcceptedQuestCapture},System.String,System.Threading.CancellationToken)">
+        <member name="M:Echoglossian.DialogueInterlocutorMetadataResolver.FindMatchingRows(System.Collections.Generic.IReadOnlyList{Echoglossian.DialogueInterlocutorMetadataResolver.AcceptedQuestCapture},System.Collections.Generic.IReadOnlyCollection{System.String},System.Threading.CancellationToken)">
             <summary>
                 Resolves exact accepted-quest dialogue rows outside the native capture
                 scheduler using the copied accepted quest identifiers.
             </summary>
             <param name="acceptedQuests">The accepted quest identifiers and sequences captured on the framework thread.</param>
-            <param name="sourceText">The visible source text requiring an exact match.</param>
+            <param name="sourceTexts">The visible source texts requiring an exact match.</param>
             <param name="cancellationToken">The token that cancels traversal.</param>
             <returns>The exact matching quest snapshots and dialogue entries.</returns>
         </member>
@@ -33791,6 +33898,33 @@
         </member>
         <member name="P:Echoglossian.DialogueInterlocutorMetadataResolver.AcceptedQuestCapture.QuestSequence">
             <summary>The captured live quest sequence.</summary>
+        </member>
+        <member name="T:Echoglossian.QuestDialogueRowMatch">
+            <summary>
+                Identifies one quest dialogue sheet row independently of the game-data
+                language it was matched in.
+            </summary>
+            <param name="QuestSheetName">The quest text sheet name.</param>
+            <param name="RowKey">The language-independent row key.</param>
+            <param name="SourceOrder">The zero-based row index in the sheet.</param>
+        </member>
+        <member name="M:Echoglossian.QuestDialogueRowMatch.#ctor(System.String,System.String,System.Int32)">
+            <summary>
+                Identifies one quest dialogue sheet row independently of the game-data
+                language it was matched in.
+            </summary>
+            <param name="QuestSheetName">The quest text sheet name.</param>
+            <param name="RowKey">The language-independent row key.</param>
+            <param name="SourceOrder">The zero-based row index in the sheet.</param>
+        </member>
+        <member name="P:Echoglossian.QuestDialogueRowMatch.QuestSheetName">
+            <summary>The quest text sheet name.</summary>
+        </member>
+        <member name="P:Echoglossian.QuestDialogueRowMatch.RowKey">
+            <summary>The language-independent row key.</summary>
+        </member>
+        <member name="P:Echoglossian.QuestDialogueRowMatch.SourceOrder">
+            <summary>The zero-based row index in the sheet.</summary>
         </member>
         <member name="T:Echoglossian.QuestCanonicalData">
             <summary>
@@ -34233,6 +34367,17 @@
             <param name="snapshot">The resolved managed progression snapshot, if any.</param>
             <returns><see langword="true" /> when progression data could be resolved.</returns>
         </member>
+        <member name="M:Echoglossian.QuestProgressResolver.TryResolveQuestRow(Lumina.Excel.ExcelSheet{Lumina.Excel.Sheets.Quest},System.UInt32,System.UInt32@,Lumina.Excel.Sheets.Quest@)">
+            <summary>
+                Resolves a quest row, promoting short runtime quest ids into the
+                Quest sheet row range.
+            </summary>
+            <param name="questSheet">The Quest sheet in the desired language.</param>
+            <param name="questId">The runtime or row quest id.</param>
+            <param name="resolvedQuestRowId">The resolved Quest row id.</param>
+            <param name="questRow">The resolved Quest row.</param>
+            <returns><see langword="true" /> when the row exists.</returns>
+        </member>
         <member name="T:Echoglossian.QuestProgressCapture">
             <summary>
                 Carries lightweight native quest values across a worker handoff.
@@ -34452,6 +34597,157 @@
             <param name="operation">The scheduled snapshot operation.</param>
             <param name="publish">Publishes the immutable result to its owning state.</param>
             <returns>The asynchronous worker task.</returns>
+        </member>
+        <member name="T:Echoglossian.IJapaneseQuestDataReader">
+            <summary>
+                Reads quest texts from the Japanese game data regardless of the client
+                language.
+            </summary>
+        </member>
+        <member name="M:Echoglossian.IJapaneseQuestDataReader.ReadQuestTextRows(System.String,System.Threading.CancellationToken)">
+            <summary>
+                Reads every populated row of one quest text sheet in Japanese.
+            </summary>
+            <param name="questSheetName">The quest text sheet name.</param>
+            <param name="cancellationToken">The token that cancels sheet traversal.</param>
+            <returns>The populated rows in sheet order.</returns>
+        </member>
+        <member name="M:Echoglossian.IJapaneseQuestDataReader.EvaluateQuestTextRowAsync(System.String,System.Int32,System.String,System.Threading.CancellationToken)">
+            <summary>
+                Evaluates one Japanese quest text row, including player-name and
+                gender macros, on the framework thread.
+            </summary>
+            <param name="questSheetName">The quest text sheet name.</param>
+            <param name="rowIndex">The zero-based row index.</param>
+            <param name="expectedRowKey">The row key the index must still carry.</param>
+            <param name="cancellationToken">The token that cancels the evaluation.</param>
+            <returns>The evaluated Japanese text, or <see langword="null" />.</returns>
+        </member>
+        <member name="M:Echoglossian.IJapaneseQuestDataReader.ReadQuestName(System.UInt32)">
+            <summary>
+                Reads the Japanese quest title.
+            </summary>
+            <param name="questId">The runtime or row quest id.</param>
+            <returns>The Japanese title, or <see langword="null" />.</returns>
+        </member>
+        <member name="T:Echoglossian.QuestTextRow">
+            <summary>
+                Represents one quest text sheet row.
+            </summary>
+            <param name="Index">The zero-based row index.</param>
+            <param name="RowKey">The language-independent row key.</param>
+            <param name="Text">The row text with macros removed.</param>
+        </member>
+        <member name="M:Echoglossian.QuestTextRow.#ctor(System.Int32,System.String,System.String)">
+            <summary>
+                Represents one quest text sheet row.
+            </summary>
+            <param name="Index">The zero-based row index.</param>
+            <param name="RowKey">The language-independent row key.</param>
+            <param name="Text">The row text with macros removed.</param>
+        </member>
+        <member name="P:Echoglossian.QuestTextRow.Index">
+            <summary>The zero-based row index.</summary>
+        </member>
+        <member name="P:Echoglossian.QuestTextRow.RowKey">
+            <summary>The language-independent row key.</summary>
+        </member>
+        <member name="P:Echoglossian.QuestTextRow.Text">
+            <summary>The row text with macros removed.</summary>
+        </member>
+        <member name="T:Echoglossian.IJapaneseQuestSourceTextProvider">
+            <summary>
+                Resolves the Japanese original of quest texts captured in the client
+                language. Every method returns <see langword="null" /> or an empty
+                result when the original cannot be resolved unambiguously, so callers
+                keep translating from the client-language text.
+            </summary>
+        </member>
+        <member name="M:Echoglossian.IJapaneseQuestSourceTextProvider.TryResolveQuestDialogueAsync(System.String,System.Threading.CancellationToken)">
+            <summary>
+                Resolves the Japanese original of one visible quest dialogue line
+                from the accepted quests in their current sequence.
+            </summary>
+            <param name="visibleText">The visible client-language dialogue line.</param>
+            <param name="cancellationToken">The token that cancels the lookup.</param>
+            <returns>The Japanese line, or <see langword="null" />.</returns>
+        </member>
+        <member name="M:Echoglossian.IJapaneseQuestSourceTextProvider.ReadQuestRows(System.String,System.Threading.CancellationToken)">
+            <summary>
+                Reads one quest text sheet in Japanese keyed by row key.
+            </summary>
+            <param name="questSheetName">The quest text sheet name.</param>
+            <param name="cancellationToken">The token that cancels sheet traversal.</param>
+            <returns>The Japanese texts keyed by row key.</returns>
+        </member>
+        <member name="M:Echoglossian.IJapaneseQuestSourceTextProvider.TryGetQuestName(System.UInt32)">
+            <summary>
+                Reads the Japanese title of one quest.
+            </summary>
+            <param name="questId">The runtime or row quest id.</param>
+            <returns>The Japanese title, or <see langword="null" />.</returns>
+        </member>
+        <member name="M:Echoglossian.IJapaneseQuestSourceTextProvider.TryResolveQuestTextAsync(System.String,System.Nullable{System.UInt32},System.Threading.CancellationToken)">
+            <summary>
+                Resolves the Japanese original of one visible quest title, journal
+                summary, objective, or system text.
+            </summary>
+            <param name="visibleText">The visible client-language quest text.</param>
+            <param name="questId">
+                The quest id when known; otherwise the accepted quests are searched.
+            </param>
+            <param name="cancellationToken">The token that cancels the lookup.</param>
+            <returns>The Japanese text, or <see langword="null" />.</returns>
+        </member>
+        <member name="T:Echoglossian.JapaneseQuestSourceTextProvider">
+            <summary>
+                Maps visible client-language quest texts to their quest sheet rows and
+                reads the same rows from the Japanese game data. Row keys and indexes
+                are identical across game-data languages.
+            </summary>
+        </member>
+        <member name="M:Echoglossian.JapaneseQuestSourceTextProvider.#ctor(Echoglossian.DialogueInterlocutorMetadataResolver)">
+            <summary>
+                Initializes a new instance of the <see cref="T:Echoglossian.JapaneseQuestSourceTextProvider" /> class
+                bound to the live game data.
+            </summary>
+            <param name="dialogueRowResolver">The resolver that matches visible dialogue to quest rows.</param>
+        </member>
+        <member name="M:Echoglossian.JapaneseQuestSourceTextProvider.#ctor(Echoglossian.IJapaneseQuestDataReader,System.Func{System.String,System.Threading.CancellationToken,System.Threading.Tasks.Task{System.Collections.Generic.IReadOnlyList{Echoglossian.QuestDialogueRowMatch}}},System.Func{System.Threading.CancellationToken,System.Threading.Tasks.Task{System.Collections.Generic.IReadOnlyList{System.ValueTuple{System.UInt32,System.Byte}}}},System.Func{System.UInt32,System.Byte,System.Threading.CancellationToken,System.Nullable{Echoglossian.QuestProgressSnapshot}})">
+            <summary>
+                Initializes a new instance of the <see cref="T:Echoglossian.JapaneseQuestSourceTextProvider" /> class.
+            </summary>
+            <param name="reader">The Japanese quest data reader.</param>
+            <param name="findDialogueRowsAsync">Matches a visible dialogue line to quest rows.</param>
+            <param name="captureAcceptedQuestsAsync">Captures accepted quests and sequences.</param>
+            <param name="resolveClientQuestProgress">Resolves a client-language quest snapshot.</param>
+        </member>
+        <member name="M:Echoglossian.JapaneseQuestSourceTextProvider.TryResolveQuestDialogueAsync(System.String,System.Threading.CancellationToken)">
+            <inheritdoc />
+        </member>
+        <member name="M:Echoglossian.JapaneseQuestSourceTextProvider.ReadQuestRows(System.String,System.Threading.CancellationToken)">
+            <inheritdoc />
+        </member>
+        <member name="M:Echoglossian.JapaneseQuestSourceTextProvider.TryGetQuestName(System.UInt32)">
+            <inheritdoc />
+        </member>
+        <member name="M:Echoglossian.JapaneseQuestSourceTextProvider.TryResolveQuestTextAsync(System.String,System.Nullable{System.UInt32},System.Threading.CancellationToken)">
+            <inheritdoc />
+        </member>
+        <member name="T:Echoglossian.LuminaJapaneseQuestDataReader">
+            <summary>
+                Reads Japanese quest texts through the Dalamud data manager. Lumina
+                keeps the loaded sheets cached, so this reader holds no cache itself.
+            </summary>
+        </member>
+        <member name="M:Echoglossian.LuminaJapaneseQuestDataReader.ReadQuestTextRows(System.String,System.Threading.CancellationToken)">
+            <inheritdoc />
+        </member>
+        <member name="M:Echoglossian.LuminaJapaneseQuestDataReader.EvaluateQuestTextRowAsync(System.String,System.Int32,System.String,System.Threading.CancellationToken)">
+            <inheritdoc />
+        </member>
+        <member name="M:Echoglossian.LuminaJapaneseQuestDataReader.ReadQuestName(System.UInt32)">
+            <inheritdoc />
         </member>
         <member name="T:Echoglossian.Persistence.BoundedPriorityQueue`1">
             <summary>

@@ -118,7 +118,7 @@ public sealed class DialogueInterlocutorMetadataResolver
         var playerSexHint = captureSnapshot.PlayerSexHint;
         var matchingRows = this.FindMatchingRows(
             captureSnapshot.AcceptedQuests,
-            request.SourceText,
+            [request.SourceText],
             cancellationToken);
 
         List<QuestDialogueMetadata> candidates = [];
@@ -188,6 +188,99 @@ public sealed class DialogueInterlocutorMetadataResolver
     }
 
     /// <summary>
+    ///     Finds the accepted-quest dialogue sheet rows whose client-language
+    ///     text matches one visible dialogue line, so callers can read the same
+    ///     row in another game-data language.
+    /// </summary>
+    /// <remarks>
+    ///     Exact matches win. When none exist, the local player name is removed
+    ///     from the visible text because quest rows read outside the framework
+    ///     thread drop name macros.
+    /// </remarks>
+    /// <param name="visibleText">The visible client-language dialogue text.</param>
+    /// <param name="cancellationToken">The token that cancels the lookup.</param>
+    /// <returns>The distinct matching quest dialogue rows.</returns>
+    internal async Task<IReadOnlyList<QuestDialogueRowMatch>> FindAcceptedQuestDialogueRowsAsync(
+        string visibleText,
+        CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(visibleText))
+        {
+            return [];
+        }
+
+        IReadOnlyList<AcceptedQuestCapture> acceptedQuests = [];
+        var localPlayerName = string.Empty;
+        await this.runOnFrameworkThreadAsync(
+            () =>
+            {
+                acceptedQuests = this.tryCollectAcceptedQuestIds()
+                    .Select(questId => new AcceptedQuestCapture(
+                        questId,
+                        this.captureQuestSequence(questId)))
+                    .ToArray();
+                localPlayerName = this.localPlayerName();
+            },
+            cancellationToken).ConfigureAwait(false);
+        cancellationToken.ThrowIfCancellationRequested();
+        if (acceptedQuests.Count == 0)
+        {
+            return [];
+        }
+
+        var matchingRows = this.FindMatchingRows(acceptedQuests, [visibleText], cancellationToken);
+        if (matchingRows.Count == 0)
+        {
+            var nameStrippedTexts = BuildPlayerNameStrippedTexts(visibleText, localPlayerName);
+            if (nameStrippedTexts.Count > 0)
+            {
+                matchingRows = this.FindMatchingRows(acceptedQuests, nameStrippedTexts, cancellationToken);
+            }
+        }
+
+        return matchingRows
+            .Select(row => new QuestDialogueRowMatch(
+                row.Snapshot.QuestSheetName,
+                row.Entry.RowKey,
+                row.Entry.SourceOrder))
+            .Distinct()
+            .ToArray();
+    }
+
+    /// <summary>
+    ///     Builds visible-text variants without the local player name, its
+    ///     forename, or its surname.
+    /// </summary>
+    /// <param name="visibleText">The visible dialogue text.</param>
+    /// <param name="localPlayerName">The local player full name.</param>
+    /// <returns>The distinct changed variants.</returns>
+    internal static IReadOnlyCollection<string> BuildPlayerNameStrippedTexts(
+        string visibleText,
+        string? localPlayerName)
+    {
+        if (string.IsNullOrWhiteSpace(localPlayerName))
+        {
+            return [];
+        }
+
+        var names = new List<string> { localPlayerName.Trim() };
+        names.AddRange(localPlayerName.Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries));
+        var variants = new HashSet<string>(StringComparer.Ordinal);
+        var stripped = visibleText;
+        foreach (var name in names.Distinct(StringComparer.Ordinal))
+        {
+            if (stripped.Contains(name, StringComparison.Ordinal))
+            {
+                stripped = stripped.Replace(name, string.Empty, StringComparison.Ordinal);
+                variants.Add(stripped);
+            }
+        }
+
+        variants.Remove(visibleText);
+        return variants;
+    }
+
+    /// <summary>
     ///     Captures native resolver inputs into immutable managed values before
     ///     asynchronous work begins.
     /// </summary>
@@ -216,12 +309,12 @@ public sealed class DialogueInterlocutorMetadataResolver
     ///     scheduler using the copied accepted quest identifiers.
     /// </summary>
     /// <param name="acceptedQuests">The accepted quest identifiers and sequences captured on the framework thread.</param>
-    /// <param name="sourceText">The visible source text requiring an exact match.</param>
+    /// <param name="sourceTexts">The visible source texts requiring an exact match.</param>
     /// <param name="cancellationToken">The token that cancels traversal.</param>
     /// <returns>The exact matching quest snapshots and dialogue entries.</returns>
     private IReadOnlyList<(QuestProgressSnapshot Snapshot, QuestDialogueSheetEntry Entry)> FindMatchingRows(
         IReadOnlyList<AcceptedQuestCapture> acceptedQuests,
-        string sourceText,
+        IReadOnlyCollection<string> sourceTexts,
         CancellationToken cancellationToken)
     {
         List<(QuestProgressSnapshot Snapshot, QuestDialogueSheetEntry Entry)> matchingRows = [];
@@ -241,7 +334,7 @@ public sealed class DialogueInterlocutorMetadataResolver
             {
                 cancellationToken.ThrowIfCancellationRequested();
                 if (entry.QuestSequence == questProgress.Value.QuestSequence &&
-                    string.Equals(entry.Text, sourceText, StringComparison.Ordinal))
+                    sourceTexts.Contains(entry.Text, StringComparer.Ordinal))
                 {
                     matchingRows.Add((questProgress.Value, entry));
                 }
@@ -515,3 +608,15 @@ public sealed class DialogueInterlocutorMetadataResolver
         uint QuestId,
         byte QuestSequence);
 }
+
+/// <summary>
+///     Identifies one quest dialogue sheet row independently of the game-data
+///     language it was matched in.
+/// </summary>
+/// <param name="QuestSheetName">The quest text sheet name.</param>
+/// <param name="RowKey">The language-independent row key.</param>
+/// <param name="SourceOrder">The zero-based row index in the sheet.</param>
+internal readonly record struct QuestDialogueRowMatch(
+    string QuestSheetName,
+    string RowKey,
+    int SourceOrder);

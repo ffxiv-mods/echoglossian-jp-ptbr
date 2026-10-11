@@ -144,7 +144,8 @@ public partial class Echoglossian
                   text => this.RemoveDiacritics(
                       text,
                       this.SpecialCharsSupportedByGameFont),
-                  this.ResolveDialogueInterlocutorHintsAsync)));
+                  this.ResolveDialogueInterlocutorHintsAsync,
+                  resolveAlternateSourceTextAsync: this.ResolveJapaneseDialogueSourceTextAsync)));
     }
 
     if (this.configuration.TranslateBattleTalk)
@@ -171,7 +172,8 @@ public partial class Echoglossian
                   text => this.RemoveDiacritics(
                       text,
                       this.SpecialCharsSupportedByGameFont),
-                  this.ResolveDialogueInterlocutorHintsAsync)));
+                  this.ResolveDialogueInterlocutorHintsAsync,
+                  this.ResolveJapaneseDialogueSourceTextAsync)));
     }
 
     if (this.configuration.TranslateTalkSubtitle)

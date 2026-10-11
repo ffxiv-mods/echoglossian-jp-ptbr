@@ -152,6 +152,60 @@ public class DialogueInterlocutorMetadataResolverTests
     }
 
     /// <summary>
+    ///     Ensures a visible dialogue line maps to its language-independent
+    ///     quest row identity.
+    /// </summary>
+    [Fact]
+    public async Task FindAcceptedQuestDialogueRowsAsync_ExactLine_ReturnsRowIdentity()
+    {
+        var resolver = this.CreateResolver();
+
+        var rows = await resolver.FindAcceptedQuestDialogueRowsAsync("Welcome, adventurer.");
+
+        var row = Assert.Single(rows);
+        Assert.Equal("quest/032/LucKbb111_03263", row.QuestSheetName);
+        Assert.Equal("LucKbb111_03263_NPC_000_000", row.RowKey);
+        Assert.Equal(0, row.SourceOrder);
+    }
+
+    /// <summary>
+    ///     Ensures a visible line without a quest row returns no identity.
+    /// </summary>
+    [Fact]
+    public async Task FindAcceptedQuestDialogueRowsAsync_UnknownLine_ReturnsEmpty()
+    {
+        var resolver = this.CreateResolver();
+
+        var rows = await resolver.FindAcceptedQuestDialogueRowsAsync("Something else.");
+
+        Assert.Empty(rows);
+    }
+
+    /// <summary>
+    ///     Ensures player-name variants match rows read without name macros.
+    /// </summary>
+    [Fact]
+    public void BuildPlayerNameStrippedTexts_RemovesFullAndPartialNames()
+    {
+        var variants = DialogueInterlocutorMetadataResolver.BuildPlayerNameStrippedTexts(
+            "Ah, Player Name! Player, welcome back.",
+            "Player Name");
+
+        Assert.Contains("Ah, ! Player, welcome back.", variants);
+        Assert.Contains("Ah, ! , welcome back.", variants);
+        Assert.DoesNotContain("Ah, Player Name! Player, welcome back.", variants);
+    }
+
+    /// <summary>
+    ///     Ensures a missing player name produces no variants.
+    /// </summary>
+    [Fact]
+    public void BuildPlayerNameStrippedTexts_NoPlayerName_ReturnsEmpty()
+    {
+        Assert.Empty(DialogueInterlocutorMetadataResolver.BuildPlayerNameStrippedTexts("Hello.", null));
+    }
+
+    /// <summary>
     ///     Ensures a loaded actor matching the persisted addressee upgrades the
     ///     result while retaining the persisted quest metadata.
     /// </summary>

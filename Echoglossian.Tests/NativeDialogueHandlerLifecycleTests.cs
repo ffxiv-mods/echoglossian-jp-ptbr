@@ -1011,6 +1011,120 @@ public sealed class NativeDialogueHandlerLifecycleTests : IDisposable
     }
 
     /// <summary>
+    ///     Ensures a resolved Japanese original is sent to the engine while
+    ///     the visible English line remains the persisted lookup identity.
+    /// </summary>
+    [Fact]
+    public async Task TalkHandler_AlternateSource_TranslatesJapaneseAndPersistsVisibleText()
+    {
+        var translator = new SourceRecordingTranslator(echoJapanese: false);
+        TalkMessage? insertedMessage = null;
+        var overlayPublished = new TaskCompletionSource<bool>(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+        using var handler = CreateTalkHandler(
+            CreateTranslationService(translator),
+            () => overlayPublished.TrySetResult(true),
+            insertTalkMessageAsync: message =>
+            {
+                insertedMessage = message;
+                return Task.FromResult(string.Empty);
+            },
+            resolveAlternateSourceTextAsync: static (_, _, _, _) =>
+                Task.FromResult<AlternateSourceText?>(
+                    new AlternateSourceText("離れないで。", new SourceClientLanguage("ja", "ja"))));
+        var english = new SourceClientLanguage("en", "en");
+
+        handler.InvalidateStateForSource(english);
+        Assert.True(handler.TryQueueTranslation(string.Empty, "Stay close.", english));
+
+        await overlayPublished.Task.WaitAsync(TimeSpan.FromSeconds(1));
+
+        Assert.Equal([("離れないで。", "ja")], translator.Requests);
+        Assert.NotNull(insertedMessage);
+        Assert.Equal("Stay close.", insertedMessage.OriginalTalkMessage);
+        Assert.Equal("en", insertedMessage.OriginalTalkMessageLang);
+        Assert.Equal("pt:離れないで。", insertedMessage.TranslatedTalkMessage);
+    }
+
+    /// <summary>
+    ///     Ensures an unusable Japanese translation falls back to the visible
+    ///     English line.
+    /// </summary>
+    [Fact]
+    public async Task TalkHandler_AlternateSourceEchoed_FallsBackToVisibleText()
+    {
+        var translator = new SourceRecordingTranslator(echoJapanese: true);
+        TalkMessage? insertedMessage = null;
+        var overlayPublished = new TaskCompletionSource<bool>(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+        using var handler = CreateTalkHandler(
+            CreateTranslationService(translator),
+            () => overlayPublished.TrySetResult(true),
+            insertTalkMessageAsync: message =>
+            {
+                insertedMessage = message;
+                return Task.FromResult(string.Empty);
+            },
+            resolveAlternateSourceTextAsync: static (_, _, _, _) =>
+                Task.FromResult<AlternateSourceText?>(
+                    new AlternateSourceText("離れないで。", new SourceClientLanguage("ja", "ja"))));
+        var english = new SourceClientLanguage("en", "en");
+
+        handler.InvalidateStateForSource(english);
+        Assert.True(handler.TryQueueTranslation(string.Empty, "Stay close.", english));
+
+        await overlayPublished.Task.WaitAsync(TimeSpan.FromSeconds(1));
+
+        Assert.Equal([("離れないで。", "ja"), ("Stay close.", "en")], translator.Requests);
+        Assert.NotNull(insertedMessage);
+        Assert.Equal("pt:Stay close.", insertedMessage.TranslatedTalkMessage);
+    }
+
+    /// <summary>
+    ///     Ensures BattleTalk sends the resolved Japanese original to the engine.
+    /// </summary>
+    [Fact]
+    public async Task BattleTalkHandler_AlternateSource_TranslatesJapanese()
+    {
+        var translator = new SourceRecordingTranslator(echoJapanese: false);
+        BattleTalkMessage? insertedMessage = null;
+        var overlayPublished = new TaskCompletionSource<bool>(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+        using var handler = new BattleTalkHandler(
+            new Config
+            {
+                TranslateBattleTalk = true,
+                BattleTalkTranslationDisplayMode =
+                    JournalTranslationDisplayMode.TooltipTranslation,
+                Lang = 81,
+            },
+            CreateTranslationService(translator),
+            static (_, _) => Task.FromResult<BattleTalkMessage?>(null),
+            (message, _) =>
+            {
+                insertedMessage = message;
+                return Task.FromResult(string.Empty);
+            },
+            (_, _, _) => overlayPublished.TrySetResult(true),
+            static () => { },
+            static text => text,
+            static (_, _, _, _) => Task.FromResult(default(DialogueInterlocutorHints)),
+            static (_, _, _, _) => Task.FromResult<AlternateSourceText?>(
+                new AlternateSourceText("了解した。", new SourceClientLanguage("ja", "ja"))));
+        var english = new SourceClientLanguage("en", "en");
+
+        handler.InvalidateStateForSource(english);
+        Assert.True(handler.TryQueueTranslation(string.Empty, "Understood.", english));
+
+        await overlayPublished.Task.WaitAsync(TimeSpan.FromSeconds(1));
+
+        Assert.Equal([("了解した。", "ja")], translator.Requests);
+        Assert.NotNull(insertedMessage);
+        Assert.Equal("Understood.", insertedMessage.OriginalBattleTalkMessage);
+        Assert.Equal("pt:了解した。", insertedMessage.TranslatedBattleTalkMessage);
+    }
+
+    /// <summary>
     ///     Creates a Talk handler with native-free publication delegates.
     /// </summary>
     /// <param name="translationService">The translation service.</param>
@@ -1028,7 +1142,9 @@ public sealed class NativeDialogueHandlerLifecycleTests : IDisposable
         Func<TalkMessage, CancellationToken, Task<TalkMessage?>>?
             findTalkMessageAsync = null,
         Func<string, string, SourceClientLanguage, CancellationToken,
-            Task<DialogueInterlocutorHints>>? resolveInterlocutorHintsAsync = null)
+            Task<DialogueInterlocutorHints>>? resolveInterlocutorHintsAsync = null,
+        Func<string, SourceClientLanguage, string, CancellationToken,
+            Task<AlternateSourceText?>>? resolveAlternateSourceTextAsync = null)
     {
         return new TalkHandler(
             configuration ?? new Config
@@ -1049,7 +1165,8 @@ public sealed class NativeDialogueHandlerLifecycleTests : IDisposable
             static text => text,
             resolveInterlocutorHintsAsync ??
             (static (_, _, _, _) => Task.FromResult(default(DialogueInterlocutorHints))),
-            restoreNativeMutation: static () => { });
+            restoreNativeMutation: static () => { },
+            resolveAlternateSourceTextAsync: resolveAlternateSourceTextAsync);
     }
 
     /// <summary>
@@ -1269,6 +1386,52 @@ public sealed class NativeDialogueHandlerLifecycleTests : IDisposable
         public Task<DialogueTranslationContext> WaitForDialogueContextAsync()
         {
             return this.context.Task;
+        }
+    }
+
+    /// <summary>
+    ///     Records each request text and provider source language.
+    /// </summary>
+    private sealed class SourceRecordingTranslator : ITranslator
+    {
+        private readonly bool echoJapanese;
+
+        /// <summary>
+        ///     Initializes a new instance of the <see cref="SourceRecordingTranslator" /> class.
+        /// </summary>
+        /// <param name="echoJapanese">Whether Japanese requests echo their input.</param>
+        public SourceRecordingTranslator(bool echoJapanese)
+        {
+            this.echoJapanese = echoJapanese;
+        }
+
+        /// <summary>
+        ///     Gets the recorded request texts and source languages.
+        /// </summary>
+        public List<(string Text, string Source)> Requests { get; } = [];
+
+        /// <inheritdoc />
+        public string? Translate(
+            string text,
+            string sourceLanguage,
+            string targetLanguage)
+        {
+            return null;
+        }
+
+        /// <inheritdoc />
+        public Task<string?> TranslateAsync(
+            string text,
+            string sourceLanguage,
+            string targetLanguage)
+        {
+            lock (this.Requests)
+            {
+                this.Requests.Add((text, sourceLanguage));
+            }
+
+            return Task.FromResult<string?>(
+                this.echoJapanese && sourceLanguage == "ja" ? text : $"pt:{text}");
         }
     }
 

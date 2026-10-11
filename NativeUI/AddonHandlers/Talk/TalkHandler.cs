@@ -34,6 +34,8 @@ public sealed class TalkHandler :
   private readonly Func<string, string> normalizeReplacementText;
   private readonly Func<string, string, SourceClientLanguage, CancellationToken,
       Task<DialogueInterlocutorHints>> resolveInterlocutorHintsAsync;
+  private readonly Func<string, SourceClientLanguage, string, CancellationToken,
+      Task<AlternateSourceText?>>? resolveAlternateSourceTextAsync;
   private readonly OwnedAsyncOperationSet ownedOperations = new(
       exception => PluginRuntimeLog.Error(
           $"[{TalkAddonName}] Unexpected Talk background operation error: {exception}"));
@@ -85,6 +87,10 @@ public sealed class TalkHandler :
   /// <param name="restoreNativeMutation">
   ///     Optional native-free override for restoring tracked Talk mutation.
   /// </param>
+  /// <param name="resolveAlternateSourceTextAsync">
+  ///     Optional resolver of an alternate-language source text (for example
+  ///     the Japanese original) sent to the engine instead of the visible text.
+  /// </param>
   public TalkHandler(
       Config config,
       TranslationService translationService,
@@ -96,7 +102,9 @@ public sealed class TalkHandler :
       Func<string, string> normalizeReplacementText,
       Func<string, string, SourceClientLanguage, CancellationToken,
           Task<DialogueInterlocutorHints>> resolveInterlocutorHintsAsync,
-      Action? restoreNativeMutation = null)
+      Action? restoreNativeMutation = null,
+      Func<string, SourceClientLanguage, string, CancellationToken,
+          Task<AlternateSourceText?>>? resolveAlternateSourceTextAsync = null)
     : this(
         config,
         translationService,
@@ -106,7 +114,8 @@ public sealed class TalkHandler :
         clearOverlay,
         normalizeReplacementText,
         resolveInterlocutorHintsAsync,
-        restoreNativeMutation)
+        restoreNativeMutation,
+        resolveAlternateSourceTextAsync)
   {
   }
 
@@ -125,6 +134,9 @@ public sealed class TalkHandler :
   ///     The asynchronous current-line interlocutor hint resolver.
   /// </param>
   /// <param name="restoreNativeMutation">The optional native restoration override.</param>
+  /// <param name="resolveAlternateSourceTextAsync">
+  ///     The optional alternate-language source text resolver.
+  /// </param>
   internal TalkHandler(
       Config config,
       TranslationService translationService,
@@ -136,7 +148,9 @@ public sealed class TalkHandler :
       Func<string, string> normalizeReplacementText,
       Func<string, string, SourceClientLanguage, CancellationToken,
           Task<DialogueInterlocutorHints>> resolveInterlocutorHintsAsync,
-      Action? restoreNativeMutation = null)
+      Action? restoreNativeMutation = null,
+      Func<string, SourceClientLanguage, string, CancellationToken,
+          Task<AlternateSourceText?>>? resolveAlternateSourceTextAsync = null)
   {
     this.config = config;
     this.translationService = translationService;
@@ -146,6 +160,7 @@ public sealed class TalkHandler :
     this.clearOverlay = clearOverlay;
     this.normalizeReplacementText = normalizeReplacementText;
     this.resolveInterlocutorHintsAsync = resolveInterlocutorHintsAsync;
+    this.resolveAlternateSourceTextAsync = resolveAlternateSourceTextAsync;
     this.restoreNativeMutation =
         restoreNativeMutation ?? this.RestoreTrackedNativeMutation;
 
@@ -242,14 +257,25 @@ public sealed class TalkHandler :
 
     try
     {
-      var translatedText = await this.translationService.TranslateAsync(
+      var alternateSource = await this.ResolveAlternateSourceTextOrDefaultAsync(
           originalText,
           sourceLanguage,
           operationScope.TargetLanguageCode,
-          TranslationSurfaceGroup.Dialogue,
-          translatorResolution,
-          sourceOperation.CancellationToken,
-          originContext: "Talk/Text").ConfigureAwait(false);
+          sourceOperation.CancellationToken).ConfigureAwait(false);
+      var translatedText = await SourceTextTranslation.TranslatePreferringAlternateAsync(
+          originalText,
+          sourceLanguage,
+          alternateSource?.Text,
+          alternateSource?.Source,
+          operationScope.TargetLanguageCode,
+          (text, source) => this.translationService.TranslateAsync(
+              text,
+              source,
+              operationScope.TargetLanguageCode,
+              TranslationSurfaceGroup.Dialogue,
+              translatorResolution,
+              sourceOperation.CancellationToken,
+              originContext: "Talk/Text")).ConfigureAwait(false);
       var translatedName = this.ShouldTranslateTalkNpcNames() &&
                            !originalName.IsNullOrEmpty()
           ? await this.translationService.TranslateAsync(
@@ -1191,6 +1217,17 @@ public sealed class TalkHandler :
           return;
         }
 
+        var alternateSource = await this.ResolveAlternateSourceTextOrDefaultAsync(
+            originalText,
+            sourceLanguage,
+            operationScope.TargetLanguageCode,
+            operationToken).ConfigureAwait(false);
+        if (!this.sourceLifecycle.IsCurrent(sourceOperation) ||
+            !this.IsCurrentRequest(requestId, sourceLanguage))
+        {
+          return;
+        }
+
         var dialogueContext = DialogueTranslationSessionStore.BuildContext(
             TalkAddonName,
             this.BuildDialogueSessionKey(
@@ -1198,7 +1235,7 @@ public sealed class TalkHandler :
                 sourceLanguage,
                 operationScope),
             originalName,
-            originalText,
+            alternateSource?.Text ?? originalText,
             DialogueSessionHistoryLimit,
             DialogueSessionTtl,
             interlocutorHints: interlocutorHints);
@@ -1208,15 +1245,24 @@ public sealed class TalkHandler :
                 translatorResolution);
         usedRuntimeOnlyDialogueContext = usesRuntimeOnlyDialogueContext;
 
-        translatedText = await this.translationService.TranslateAsync(
+        translatedText = await SourceTextTranslation.TranslatePreferringAlternateAsync(
             originalText,
             sourceLanguage,
+            alternateSource?.Text,
+            alternateSource?.Source,
             operationScope.TargetLanguageCode,
-            dialogueContext,
-            TranslationSurfaceGroup.Dialogue,
-            translatorResolution,
-            operationToken,
-            originContext: "Talk/Text").ConfigureAwait(false);
+            (text, source) => this.translationService.TranslateAsync(
+                text,
+                source,
+                operationScope.TargetLanguageCode,
+                alternateSource is null ||
+                string.Equals(text, alternateSource.Value.Text, StringComparison.Ordinal)
+                    ? dialogueContext
+                    : null,
+                TranslationSurfaceGroup.Dialogue,
+                translatorResolution,
+                operationToken,
+                originContext: "Talk/Text")).ConfigureAwait(false);
 
         if (!this.sourceLifecycle.IsCurrent(sourceOperation) ||
             !this.IsCurrentRequest(requestId, sourceLanguage))
@@ -1487,6 +1533,43 @@ public sealed class TalkHandler :
   /// <param name="sourceLanguage">The captured source language.</param>
   /// <param name="cancellationToken">The token that cancels the current source operation.</param>
   /// <returns>The resolved hints, or an empty hint set after an auxiliary failure.</returns>
+  /// <summary>
+  ///     Resolves the optional alternate-language source text without letting
+  ///     a resolver failure block the visible-text translation.
+  /// </summary>
+  /// <param name="originalText">The visible dialogue text.</param>
+  /// <param name="sourceLanguage">The captured client source language.</param>
+  /// <param name="targetLanguageCode">The operation target language.</param>
+  /// <param name="cancellationToken">The handler-owned cancellation token.</param>
+  /// <returns>The alternate source text, or <see langword="null" />.</returns>
+  private async Task<AlternateSourceText?> ResolveAlternateSourceTextOrDefaultAsync(
+      string originalText,
+      SourceClientLanguage sourceLanguage,
+      string targetLanguageCode,
+      CancellationToken cancellationToken)
+  {
+    if (this.resolveAlternateSourceTextAsync == null)
+    {
+      return null;
+    }
+
+    try
+    {
+      return await this.resolveAlternateSourceTextAsync(
+          originalText,
+          sourceLanguage,
+          targetLanguageCode,
+          cancellationToken).ConfigureAwait(false);
+    }
+    catch (Exception exception) when (exception is not OperationCanceledException)
+    {
+      PluginRuntimeLog.Debug(
+          TalkAddonName,
+          $"Alternate source text resolution failed; using visible text. {exception.GetType().Name}: {exception.Message}");
+      return null;
+    }
+  }
+
   private async Task<DialogueInterlocutorHints> ResolveInterlocutorHintsOrDefaultAsync(
       string originalName,
       string originalText,

@@ -294,7 +294,16 @@ internal static class QuestProgressResolver
         return true;
     }
 
-    private static bool TryResolveQuestRow(
+    /// <summary>
+    ///     Resolves a quest row, promoting short runtime quest ids into the
+    ///     Quest sheet row range.
+    /// </summary>
+    /// <param name="questSheet">The Quest sheet in the desired language.</param>
+    /// <param name="questId">The runtime or row quest id.</param>
+    /// <param name="resolvedQuestRowId">The resolved Quest row id.</param>
+    /// <param name="questRow">The resolved Quest row.</param>
+    /// <returns><see langword="true" /> when the row exists.</returns>
+    internal static bool TryResolveQuestRow(
         ExcelSheet<Quest> questSheet,
         uint questId,
         out uint resolvedQuestRowId,

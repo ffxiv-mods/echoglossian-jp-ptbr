@@ -37,6 +37,8 @@ public sealed class BattleTalkHandler :
   private readonly Func<string, string> normalizeReplacementText;
   private readonly Func<string, string, SourceClientLanguage, CancellationToken,
       Task<DialogueInterlocutorHints>> resolveInterlocutorHintsAsync;
+  private readonly Func<string, SourceClientLanguage, string, CancellationToken,
+      Task<AlternateSourceText?>>? resolveAlternateSourceTextAsync;
   private readonly OwnedAsyncOperationSet ownedOperations = new(
       exception => PluginRuntimeLog.Error(
           $"[{BattleTalkAddonName}] Unexpected BattleTalk background operation error: {exception}"));
@@ -93,6 +95,10 @@ public sealed class BattleTalkHandler :
   /// <param name="resolveInterlocutorHintsAsync">
   ///     Delegate used to resolve current-line interlocutor hints after a database miss.
   /// </param>
+  /// <param name="resolveAlternateSourceTextAsync">
+  ///     Optional resolver of an alternate-language source text (for example
+  ///     the Japanese original) sent to the engine instead of the visible text.
+  /// </param>
   public BattleTalkHandler(
       Config config,
       TranslationService translationService,
@@ -103,7 +109,9 @@ public sealed class BattleTalkHandler :
       Action clearOverlay,
       Func<string, string> normalizeReplacementText,
       Func<string, string, SourceClientLanguage, CancellationToken,
-          Task<DialogueInterlocutorHints>> resolveInterlocutorHintsAsync)
+          Task<DialogueInterlocutorHints>> resolveInterlocutorHintsAsync,
+      Func<string, SourceClientLanguage, string, CancellationToken,
+          Task<AlternateSourceText?>>? resolveAlternateSourceTextAsync = null)
     : this(
         config,
         translationService,
@@ -112,7 +120,8 @@ public sealed class BattleTalkHandler :
         updateOverlay,
         clearOverlay,
         normalizeReplacementText,
-        resolveInterlocutorHintsAsync)
+        resolveInterlocutorHintsAsync,
+        resolveAlternateSourceTextAsync)
   {
   }
 
@@ -130,6 +139,9 @@ public sealed class BattleTalkHandler :
   /// <param name="resolveInterlocutorHintsAsync">
   ///     The asynchronous current-line interlocutor hint resolver.
   /// </param>
+  /// <param name="resolveAlternateSourceTextAsync">
+  ///     The optional alternate-language source text resolver.
+  /// </param>
   internal BattleTalkHandler(
       Config config,
       TranslationService translationService,
@@ -140,7 +152,9 @@ public sealed class BattleTalkHandler :
       Action clearOverlay,
       Func<string, string> normalizeReplacementText,
       Func<string, string, SourceClientLanguage, CancellationToken,
-          Task<DialogueInterlocutorHints>> resolveInterlocutorHintsAsync)
+          Task<DialogueInterlocutorHints>> resolveInterlocutorHintsAsync,
+      Func<string, SourceClientLanguage, string, CancellationToken,
+          Task<AlternateSourceText?>>? resolveAlternateSourceTextAsync = null)
   {
     this.config = config;
     this.translationService = translationService;
@@ -150,6 +164,7 @@ public sealed class BattleTalkHandler :
     this.clearOverlay = clearOverlay;
     this.normalizeReplacementText = normalizeReplacementText;
     this.resolveInterlocutorHintsAsync = resolveInterlocutorHintsAsync;
+    this.resolveAlternateSourceTextAsync = resolveAlternateSourceTextAsync;
 
     this.RegisterHandler(AddonEvent.PreShow, this.OnCaptureHint);
     this.RegisterHandler(AddonEvent.PreRefresh, this.OnCaptureHint);
@@ -250,14 +265,25 @@ public sealed class BattleTalkHandler :
 
     try
     {
-      var translatedText = await this.translationService.TranslateAsync(
+      var alternateSource = await this.ResolveAlternateSourceTextOrDefaultAsync(
           originalText,
           sourceLanguage,
           operationScope.TargetLanguageCode,
-          TranslationSurfaceGroup.Dialogue,
-          translatorResolution,
-          sourceOperation.CancellationToken,
-          originContext: "BattleTalk/Text").ConfigureAwait(false);
+          sourceOperation.CancellationToken).ConfigureAwait(false);
+      var translatedText = await SourceTextTranslation.TranslatePreferringAlternateAsync(
+          originalText,
+          sourceLanguage,
+          alternateSource?.Text,
+          alternateSource?.Source,
+          operationScope.TargetLanguageCode,
+          (text, source) => this.translationService.TranslateAsync(
+              text,
+              source,
+              operationScope.TargetLanguageCode,
+              TranslationSurfaceGroup.Dialogue,
+              translatorResolution,
+              sourceOperation.CancellationToken,
+              originContext: "BattleTalk/Text")).ConfigureAwait(false);
       var translatedName = this.ShouldTranslateBattleTalkNpcNames() &&
                            !originalName.IsNullOrEmpty()
           ? await this.translationService.TranslateAsync(
@@ -1073,6 +1099,17 @@ public sealed class BattleTalkHandler :
           return;
         }
 
+        var alternateSource = await this.ResolveAlternateSourceTextOrDefaultAsync(
+            originalText,
+            sourceLanguage,
+            operationScope.TargetLanguageCode,
+            operationToken).ConfigureAwait(false);
+        if (!this.sourceLifecycle.IsCurrent(sourceOperation) ||
+            !this.IsCurrentRequest(requestId, sourceLanguage))
+        {
+          return;
+        }
+
         var dialogueContext = DialogueTranslationSessionStore.BuildContext(
             BattleTalkAddonName,
             this.BuildDialogueSessionKey(
@@ -1080,7 +1117,7 @@ public sealed class BattleTalkHandler :
                 sourceLanguage,
                 operationScope),
             originalName,
-            originalText,
+            alternateSource?.Text ?? originalText,
             DialogueSessionHistoryLimit,
             DialogueSessionTtl,
             interlocutorHints: interlocutorHints);
@@ -1090,15 +1127,24 @@ public sealed class BattleTalkHandler :
                 translatorResolution);
         usedRuntimeOnlyDialogueContext = usesRuntimeOnlyDialogueContext;
 
-        translatedText = await this.translationService.TranslateAsync(
+        translatedText = await SourceTextTranslation.TranslatePreferringAlternateAsync(
             originalText,
             sourceLanguage,
+            alternateSource?.Text,
+            alternateSource?.Source,
             operationScope.TargetLanguageCode,
-            dialogueContext,
-            TranslationSurfaceGroup.Dialogue,
-            translatorResolution,
-            operationToken,
-            originContext: "BattleTalk/Text").ConfigureAwait(false);
+            (text, source) => this.translationService.TranslateAsync(
+                text,
+                source,
+                operationScope.TargetLanguageCode,
+                alternateSource is null ||
+                string.Equals(text, alternateSource.Value.Text, StringComparison.Ordinal)
+                    ? dialogueContext
+                    : null,
+                TranslationSurfaceGroup.Dialogue,
+                translatorResolution,
+                operationToken,
+                originContext: "BattleTalk/Text")).ConfigureAwait(false);
 
         if (!this.sourceLifecycle.IsCurrent(sourceOperation) ||
             !this.IsCurrentRequest(requestId, sourceLanguage))
@@ -1265,6 +1311,43 @@ public sealed class BattleTalkHandler :
 
       PluginRuntimeLog.Error(
           $"[{BattleTalkAddonName}] Error resolving BattleTalk translation: {ex}");
+    }
+  }
+
+  /// <summary>
+  ///     Resolves the optional alternate-language source text without letting
+  ///     a resolver failure block the visible-text translation.
+  /// </summary>
+  /// <param name="originalText">The visible dialogue text.</param>
+  /// <param name="sourceLanguage">The captured client source language.</param>
+  /// <param name="targetLanguageCode">The operation target language.</param>
+  /// <param name="cancellationToken">The handler-owned cancellation token.</param>
+  /// <returns>The alternate source text, or <see langword="null" />.</returns>
+  private async Task<AlternateSourceText?> ResolveAlternateSourceTextOrDefaultAsync(
+      string originalText,
+      SourceClientLanguage sourceLanguage,
+      string targetLanguageCode,
+      CancellationToken cancellationToken)
+  {
+    if (this.resolveAlternateSourceTextAsync == null)
+    {
+      return null;
+    }
+
+    try
+    {
+      return await this.resolveAlternateSourceTextAsync(
+          originalText,
+          sourceLanguage,
+          targetLanguageCode,
+          cancellationToken).ConfigureAwait(false);
+    }
+    catch (Exception exception) when (exception is not OperationCanceledException)
+    {
+      PluginRuntimeLog.Debug(
+          BattleTalkAddonName,
+          $"Alternate source text resolution failed; using visible text. {exception.GetType().Name}: {exception.Message}");
+      return null;
     }
   }
 
