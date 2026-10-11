@@ -296,4 +296,11 @@ internal sealed class QuestAddonHandlerDependencies
   /// </summary>
   public required LogPopupBodyHoverGeometryDecisionDelegate
       LogPopupBodyHoverGeometryDecision { get; init; }
+
+  /// <summary>
+  ///     Gets or sets the optional resolver of an alternate-language quest
+  ///     source text (visible text, optional quest id, client source, target).
+  /// </summary>
+  public Func<string, uint?, SourceClientLanguage, string, CancellationToken,
+      Task<AlternateSourceText?>>? ResolveAlternateQuestSourceTextAsync { get; init; }
 }

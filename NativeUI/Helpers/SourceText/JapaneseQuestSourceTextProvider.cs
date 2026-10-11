@@ -18,6 +18,7 @@ public sealed class JapaneseQuestSourceTextProvider : IJapaneseQuestSourceTextPr
     private readonly Func<string, CancellationToken, Task<IReadOnlyList<QuestDialogueRowMatch>>> findDialogueRowsAsync;
     private readonly Func<CancellationToken, Task<IReadOnlyList<(uint QuestId, byte QuestSequence)>>> captureAcceptedQuestsAsync;
     private readonly Func<uint, byte, CancellationToken, QuestProgressSnapshot?> resolveClientQuestProgress;
+    private readonly Func<string, uint?> resolveQuestIdByTitle;
 
     /// <summary>
     ///     Initializes a new instance of the <see cref="JapaneseQuestSourceTextProvider" /> class
@@ -29,7 +30,8 @@ public sealed class JapaneseQuestSourceTextProvider : IJapaneseQuestSourceTextPr
             new LuminaJapaneseQuestDataReader(),
             dialogueRowResolver.FindAcceptedQuestDialogueRowsAsync,
             CaptureAcceptedQuestsAsync,
-            ResolveClientQuestProgress)
+            ResolveClientQuestProgress,
+            ResolveQuestIdByTitle)
     {
     }
 
@@ -40,16 +42,19 @@ public sealed class JapaneseQuestSourceTextProvider : IJapaneseQuestSourceTextPr
     /// <param name="findDialogueRowsAsync">Matches a visible dialogue line to quest rows.</param>
     /// <param name="captureAcceptedQuestsAsync">Captures accepted quests and sequences.</param>
     /// <param name="resolveClientQuestProgress">Resolves a client-language quest snapshot.</param>
+    /// <param name="resolveQuestIdByTitle">Resolves a visible client-language quest title to its id.</param>
     internal JapaneseQuestSourceTextProvider(
         IJapaneseQuestDataReader reader,
         Func<string, CancellationToken, Task<IReadOnlyList<QuestDialogueRowMatch>>> findDialogueRowsAsync,
         Func<CancellationToken, Task<IReadOnlyList<(uint QuestId, byte QuestSequence)>>> captureAcceptedQuestsAsync,
-        Func<uint, byte, CancellationToken, QuestProgressSnapshot?> resolveClientQuestProgress)
+        Func<uint, byte, CancellationToken, QuestProgressSnapshot?> resolveClientQuestProgress,
+        Func<string, uint?>? resolveQuestIdByTitle = null)
     {
         this.reader = reader;
         this.findDialogueRowsAsync = findDialogueRowsAsync;
         this.captureAcceptedQuestsAsync = captureAcceptedQuestsAsync;
         this.resolveClientQuestProgress = resolveClientQuestProgress;
+        this.resolveQuestIdByTitle = resolveQuestIdByTitle ?? (_ => null);
     }
 
     /// <inheritdoc />
@@ -130,6 +135,13 @@ public sealed class JapaneseQuestSourceTextProvider : IJapaneseQuestSourceTextPr
 
         try
         {
+            if (!questId.HasValue &&
+                this.resolveQuestIdByTitle(normalizedVisible) is { } titleQuestId &&
+                this.reader.ReadQuestName(titleQuestId) is { Length: > 0 } japaneseTitle)
+            {
+                return japaneseTitle;
+            }
+
             IReadOnlyList<(uint QuestId, byte QuestSequence)> quests = questId.HasValue
                 ? [(questId.Value, (byte)0)]
                 : await this.captureAcceptedQuestsAsync(cancellationToken).ConfigureAwait(false);
@@ -210,6 +222,18 @@ public sealed class JapaneseQuestSourceTextProvider : IJapaneseQuestSourceTextPr
             }).ConfigureAwait(false);
         cancellationToken.ThrowIfCancellationRequested();
         return quests;
+    }
+
+    private static uint? ResolveQuestIdByTitle(string visibleTitle)
+    {
+        return QuestLuminaResolver.TryResolveQuestId(visibleTitle, out var questIdText) &&
+               uint.TryParse(
+                   questIdText,
+                   NumberStyles.Integer,
+                   CultureInfo.InvariantCulture,
+                   out var questId)
+            ? questId
+            : null;
     }
 
     private static QuestProgressSnapshot? ResolveClientQuestProgress(

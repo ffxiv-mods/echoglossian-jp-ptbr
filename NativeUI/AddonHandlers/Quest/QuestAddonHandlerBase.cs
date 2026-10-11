@@ -213,6 +213,68 @@ internal abstract class QuestAddonHandlerBase
   }
 
   /// <summary>
+  ///     Translates a quest text, sending its Japanese original to the engine
+  ///     when the Japanese source-text option resolves one.
+  /// </summary>
+  /// <param name="text">The visible client-language text.</param>
+  /// <param name="sourceLanguage">The operation-captured source identity.</param>
+  /// <param name="questId">The quest id when known.</param>
+  /// <returns>The translated text.</returns>
+  protected string TranslatePreferringAlternateSource(
+      string text,
+      SourceClientLanguage sourceLanguage,
+      uint? questId)
+  {
+    var targetLanguage = LangDict[LanguageInt].Code;
+    var originContext = $"{this.GetType().Name}/Text";
+    AlternateSourceText? alternate = null;
+    var resolver = this.Dependencies.ResolveAlternateQuestSourceTextAsync;
+    if (resolver != null && !string.IsNullOrWhiteSpace(text))
+    {
+      try
+      {
+        alternate = resolver(text, questId, sourceLanguage, targetLanguage, CancellationToken.None)
+            .GetAwaiter()
+            .GetResult();
+      }
+      catch (Exception ex) when (ex is not OperationCanceledException)
+      {
+        PluginRuntimeLog.Debug(
+            this.GetType().Name,
+            $"Alternate quest source text resolution failed; using visible text. {ex.GetType().Name}");
+      }
+    }
+
+    return SourceTextTranslation.TranslatePreferringAlternate(
+        text,
+        sourceLanguage,
+        alternate?.Text,
+        alternate?.Source,
+        targetLanguage,
+        (sourceText, source) => this.TranslationService.Translate(
+            sourceText,
+            source,
+            targetLanguage,
+            originContext: originContext));
+  }
+
+  /// <summary>
+  ///     Parses a persisted quest id.
+  /// </summary>
+  /// <param name="questId">The quest id text.</param>
+  /// <returns>The parsed quest id, or <see langword="null" />.</returns>
+  protected static uint? ParseQuestId(string? questId)
+  {
+    return uint.TryParse(
+        questId,
+        NumberStyles.Integer,
+        CultureInfo.InvariantCulture,
+        out var parsed)
+        ? parsed
+        : null;
+  }
+
+  /// <summary>
   ///     Translates the given text asynchronously using the shared translation
   ///     service.
   /// </summary>

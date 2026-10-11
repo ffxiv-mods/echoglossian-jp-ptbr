@@ -32,6 +32,7 @@ public partial class Echoglossian
       QueueTranslation = this.QueueTranslation,
       QueueTranslationBatch = this.QueueTranslationBatch,
       RequestAcceptedQuestPrefetch = this.RequestAcceptedQuestPrefetch,
+      ResolveAlternateQuestSourceTextAsync = this.ResolveJapaneseQuestSourceTextAsync,
       RemoveHoverTooltipByPrefix =
           prefix => this.hoverTooltipManager.RemoveByPrefix(prefix),
       RegisterTranslatedHoverTooltipAddon =

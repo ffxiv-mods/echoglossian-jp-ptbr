@@ -58,4 +58,37 @@ public partial class Echoglossian
         ? null
         : new AlternateSourceText(japaneseText, japaneseSource);
   }
+
+  /// <summary>
+  ///     Resolves the Japanese original of one visible quest title, journal
+  ///     summary, objective, or system text when the option applies.
+  /// </summary>
+  /// <param name="visibleText">The visible client-language quest text.</param>
+  /// <param name="questId">The quest id when known.</param>
+  /// <param name="clientSource">The captured client source language.</param>
+  /// <param name="targetLanguageCode">The operation target language.</param>
+  /// <param name="cancellationToken">The cancellation token.</param>
+  /// <returns>The Japanese source text, or <see langword="null" />.</returns>
+  private async Task<AlternateSourceText?> ResolveJapaneseQuestSourceTextAsync(
+      string visibleText,
+      uint? questId,
+      SourceClientLanguage clientSource,
+      string targetLanguageCode,
+      CancellationToken cancellationToken)
+  {
+    if (!this.SourceTextLanguagePolicy.TryGetAlternateSource(
+            clientSource,
+            targetLanguageCode,
+            out var japaneseSource))
+    {
+      return null;
+    }
+
+    var japaneseText = await this.JapaneseQuestSourceText
+        .TryResolveQuestTextAsync(visibleText, questId, cancellationToken)
+        .ConfigureAwait(false);
+    return string.IsNullOrWhiteSpace(japaneseText)
+        ? null
+        : new AlternateSourceText(japaneseText, japaneseSource);
+  }
 }

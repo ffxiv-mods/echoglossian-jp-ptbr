@@ -728,8 +728,14 @@ internal sealed class JournalAcceptHandler : QuestAddonHandlerBase
     this.QueueTranslation(
         cacheKey,
         () => SerializeTranslationPair(
-            this.Translate(questName, sourceLanguage),
-            this.Translate(questMessage, sourceLanguage)),
+            this.TranslatePreferringAlternateSource(
+                questName,
+                sourceLanguage,
+                ParseQuestId(questId)),
+            this.TranslatePreferringAlternateSource(
+                questMessage,
+                sourceLanguage,
+                ParseQuestId(questId))),
         translatedPayload =>
         {
           if (!TryDeserializeTranslationPair(

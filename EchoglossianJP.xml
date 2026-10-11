@@ -4618,7 +4618,7 @@
             </summary>
             <param name="workItem">The captured accepted-quest prefetch work item.</param>
         </member>
-        <member name="M:Echoglossian.Echoglossian.PrefetchAcceptedQuestCurrentMessage(Echoglossian.QuestProgressSnapshot,System.String,Echoglossian.EFCoreSqlite.Models.Journal.QuestPlate,Echoglossian.SourceClientLanguage,Echoglossian.TranslationReuseScope)">
+        <member name="M:Echoglossian.Echoglossian.PrefetchAcceptedQuestCurrentMessage(Echoglossian.QuestProgressSnapshot,System.String,Echoglossian.EFCoreSqlite.Models.Journal.QuestPlate,Echoglossian.SourceClientLanguage,Echoglossian.TranslationReuseScope,Echoglossian.JapaneseQuestPrefetchText)">
             <summary>
                 Prefetches the current quest-body message for an accepted quest when it
                 is not yet persisted.
@@ -4628,8 +4628,9 @@
             <param name="existingQuestPlate">The existing persisted quest plate, if any.</param>
             <param name="sourceLanguage">The resolved source language.</param>
             <param name="scope">The immutable operation reuse scope.</param>
+            <param name="japaneseQuestText">The optional Japanese quest rows.</param>
         </member>
-        <member name="M:Echoglossian.Echoglossian.PrefetchAcceptedQuestSummaries(Echoglossian.QuestProgressSnapshot,System.String,Echoglossian.EFCoreSqlite.Models.Journal.QuestPlate,Echoglossian.SourceClientLanguage,Echoglossian.TranslationReuseScope)">
+        <member name="M:Echoglossian.Echoglossian.PrefetchAcceptedQuestSummaries(Echoglossian.QuestProgressSnapshot,System.String,Echoglossian.EFCoreSqlite.Models.Journal.QuestPlate,Echoglossian.SourceClientLanguage,Echoglossian.TranslationReuseScope,Echoglossian.JapaneseQuestPrefetchText)">
             <summary>
                 Prefetches all SEQ summary rows for an accepted quest.
             </summary>
@@ -4638,8 +4639,9 @@
             <param name="existingQuestPlate">The existing persisted quest plate, if any.</param>
             <param name="sourceLanguage">The resolved source language.</param>
             <param name="scope">The immutable operation reuse scope.</param>
+            <param name="japaneseQuestText">The optional Japanese quest rows.</param>
         </member>
-        <member name="M:Echoglossian.Echoglossian.PrefetchAcceptedQuestObjectives(Echoglossian.QuestProgressSnapshot,System.String,Echoglossian.EFCoreSqlite.Models.Journal.QuestPlate,Echoglossian.SourceClientLanguage,Echoglossian.TranslationReuseScope)">
+        <member name="M:Echoglossian.Echoglossian.PrefetchAcceptedQuestObjectives(Echoglossian.QuestProgressSnapshot,System.String,Echoglossian.EFCoreSqlite.Models.Journal.QuestPlate,Echoglossian.SourceClientLanguage,Echoglossian.TranslationReuseScope,Echoglossian.JapaneseQuestPrefetchText)">
             <summary>
                 Prefetches all TODO rows for an accepted quest.
             </summary>
@@ -4648,8 +4650,9 @@
             <param name="existingQuestPlate">The existing persisted quest plate, if any.</param>
             <param name="sourceLanguage">The resolved source language.</param>
             <param name="scope">The immutable operation reuse scope.</param>
+            <param name="japaneseQuestText">The optional Japanese quest rows.</param>
         </member>
-        <member name="M:Echoglossian.Echoglossian.PrefetchAcceptedQuestSystemRows(Echoglossian.QuestProgressSnapshot,System.String,Echoglossian.EFCoreSqlite.Models.Journal.QuestPlate,Echoglossian.SourceClientLanguage,Echoglossian.TranslationReuseScope)">
+        <member name="M:Echoglossian.Echoglossian.PrefetchAcceptedQuestSystemRows(Echoglossian.QuestProgressSnapshot,System.String,Echoglossian.EFCoreSqlite.Models.Journal.QuestPlate,Echoglossian.SourceClientLanguage,Echoglossian.TranslationReuseScope,Echoglossian.JapaneseQuestPrefetchText)">
             <summary>
                 Prefetches all SYSTEM rows for an accepted quest.
             </summary>
@@ -4658,6 +4661,7 @@
             <param name="existingQuestPlate">The existing persisted quest plate, if any.</param>
             <param name="sourceLanguage">The resolved source language.</param>
             <param name="scope">The immutable operation reuse scope.</param>
+            <param name="japaneseQuestText">The optional Japanese quest rows.</param>
         </member>
         <member name="M:Echoglossian.Echoglossian.ApplyAcceptedQuestMessageTranslation(Echoglossian.QuestProgressSnapshot,System.String,System.String,Echoglossian.TranslationReuseScope)">
             <summary>
@@ -4722,13 +4726,24 @@
             <param name="scope">The immutable operation reuse scope.</param>
             <returns>The source-scoped broker key.</returns>
         </member>
-        <member name="M:Echoglossian.Echoglossian.BuildAcceptedQuestOriginContext(Echoglossian.QuestProgressSnapshot,System.String)">
+        <member name="M:Echoglossian.Echoglossian.TranslateAcceptedQuestRow(Echoglossian.Translators.TranslationService,System.String,System.String,Echoglossian.SourceClientLanguage,System.Nullable{Echoglossian.SourceClientLanguage},System.String,System.String)">
             <summary>
                 Builds the diagnostic surface identity for one accepted-quest field.
             </summary>
             <param name="questProgressSnapshot">The accepted-quest progress snapshot.</param>
             <param name="fieldName">The translated field name.</param>
             <returns>The diagnostic surface identity.</returns>
+        </member>
+        <member name="M:Echoglossian.Echoglossian.CaptureJapaneseQuestPrefetchText(Echoglossian.QuestProgressSnapshot,Echoglossian.SourceClientLanguage,Echoglossian.TranslationReuseScope,System.Threading.CancellationToken)">
+            <summary>
+                Reads the Japanese rows and title of one accepted quest when the
+                Japanese source-text option applies to the captured scope.
+            </summary>
+            <param name="questProgressSnapshot">The resolved client-language snapshot.</param>
+            <param name="sourceLanguage">The captured client source language.</param>
+            <param name="scope">The immutable operation reuse scope.</param>
+            <param name="cancellationToken">The generation cancellation token.</param>
+            <returns>The Japanese quest texts, or <see langword="null" />.</returns>
         </member>
         <member name="M:Echoglossian.Echoglossian.DispatchAcceptedQuestPrefetchTranslation(System.String,Echoglossian.SourceClientLanguage,Echoglossian.TranslationReuseScope,Echoglossian.TryGetPrefetchTranslationDelegate,Echoglossian.QueuePrefetchTranslationDelegate,System.Func{System.String},System.Action{System.String,Echoglossian.TranslationReuseScope,System.Boolean})">
             <summary>
@@ -7888,6 +7903,18 @@
             <param name="clientSource">The captured client source language.</param>
             <param name="targetLanguageCode">The operation target language.</param>
             <param name="cancellationToken">The handler-owned cancellation token.</param>
+            <returns>The Japanese source text, or <see langword="null" />.</returns>
+        </member>
+        <member name="M:Echoglossian.Echoglossian.ResolveJapaneseQuestSourceTextAsync(System.String,System.Nullable{System.UInt32},Echoglossian.SourceClientLanguage,System.String,System.Threading.CancellationToken)">
+            <summary>
+                Resolves the Japanese original of one visible quest title, journal
+                summary, objective, or system text when the option applies.
+            </summary>
+            <param name="visibleText">The visible client-language quest text.</param>
+            <param name="questId">The quest id when known.</param>
+            <param name="clientSource">The captured client source language.</param>
+            <param name="targetLanguageCode">The operation target language.</param>
+            <param name="cancellationToken">The cancellation token.</param>
             <returns>The Japanese source text, or <see langword="null" />.</returns>
         </member>
         <member name="M:Echoglossian.Echoglossian.CreateToastGuiCaptureRuntime">
@@ -21725,6 +21752,23 @@
             <param name="sourceLanguage">The operation-captured source identity.</param>
             <returns>The translated text.</returns>
         </member>
+        <member name="M:Echoglossian.NativeUI.AddonHandlers.Quest.QuestAddonHandlerBase.TranslatePreferringAlternateSource(System.String,Echoglossian.SourceClientLanguage,System.Nullable{System.UInt32})">
+            <summary>
+                Translates a quest text, sending its Japanese original to the engine
+                when the Japanese source-text option resolves one.
+            </summary>
+            <param name="text">The visible client-language text.</param>
+            <param name="sourceLanguage">The operation-captured source identity.</param>
+            <param name="questId">The quest id when known.</param>
+            <returns>The translated text.</returns>
+        </member>
+        <member name="M:Echoglossian.NativeUI.AddonHandlers.Quest.QuestAddonHandlerBase.ParseQuestId(System.String)">
+            <summary>
+                Parses a persisted quest id.
+            </summary>
+            <param name="questId">The quest id text.</param>
+            <returns>The parsed quest id, or <see langword="null" />.</returns>
+        </member>
         <member name="M:Echoglossian.NativeUI.AddonHandlers.Quest.QuestAddonHandlerBase.TranslateAsync(System.String,Echoglossian.SourceClientLanguage)">
             <summary>
                 Translates the given text asynchronously using the shared translation
@@ -22382,6 +22426,12 @@
         <member name="P:Echoglossian.NativeUI.AddonHandlers.Quest.QuestAddonHandlerDependencies.LogPopupBodyHoverGeometryDecision">
             <summary>
                 Gets or sets the popup-body geometry diagnostic delegate.
+            </summary>
+        </member>
+        <member name="P:Echoglossian.NativeUI.AddonHandlers.Quest.QuestAddonHandlerDependencies.ResolveAlternateQuestSourceTextAsync">
+            <summary>
+                Gets or sets the optional resolver of an alternate-language quest
+                source text (visible text, optional quest id, client source, target).
             </summary>
         </member>
         <member name="T:Echoglossian.NativeUI.AddonHandlers.Quest.QuestAddonModeHelpers">
@@ -34699,6 +34749,40 @@
             <param name="cancellationToken">The token that cancels the lookup.</param>
             <returns>The Japanese text, or <see langword="null" />.</returns>
         </member>
+        <member name="T:Echoglossian.JapaneseQuestPrefetchText">
+            <summary>
+                Carries the Japanese rows and title of one quest for a prefetch work
+                item, keyed by the language-independent row key.
+            </summary>
+            <param name="Source">The Japanese source language.</param>
+            <param name="RowsByKey">The Japanese row texts keyed by row key.</param>
+            <param name="QuestName">The Japanese quest title, if any.</param>
+        </member>
+        <member name="M:Echoglossian.JapaneseQuestPrefetchText.#ctor(Echoglossian.SourceClientLanguage,System.Collections.Generic.IReadOnlyDictionary{System.String,System.String},System.String)">
+            <summary>
+                Carries the Japanese rows and title of one quest for a prefetch work
+                item, keyed by the language-independent row key.
+            </summary>
+            <param name="Source">The Japanese source language.</param>
+            <param name="RowsByKey">The Japanese row texts keyed by row key.</param>
+            <param name="QuestName">The Japanese quest title, if any.</param>
+        </member>
+        <member name="P:Echoglossian.JapaneseQuestPrefetchText.Source">
+            <summary>The Japanese source language.</summary>
+        </member>
+        <member name="P:Echoglossian.JapaneseQuestPrefetchText.RowsByKey">
+            <summary>The Japanese row texts keyed by row key.</summary>
+        </member>
+        <member name="P:Echoglossian.JapaneseQuestPrefetchText.QuestName">
+            <summary>The Japanese quest title, if any.</summary>
+        </member>
+        <member name="M:Echoglossian.JapaneseQuestPrefetchText.FindRow(System.String)">
+            <summary>
+                Finds the Japanese text of one row.
+            </summary>
+            <param name="rowKey">The row key.</param>
+            <returns>The Japanese text, or <see langword="null" />.</returns>
+        </member>
         <member name="T:Echoglossian.JapaneseQuestSourceTextProvider">
             <summary>
                 Maps visible client-language quest texts to their quest sheet rows and
@@ -34713,7 +34797,7 @@
             </summary>
             <param name="dialogueRowResolver">The resolver that matches visible dialogue to quest rows.</param>
         </member>
-        <member name="M:Echoglossian.JapaneseQuestSourceTextProvider.#ctor(Echoglossian.IJapaneseQuestDataReader,System.Func{System.String,System.Threading.CancellationToken,System.Threading.Tasks.Task{System.Collections.Generic.IReadOnlyList{Echoglossian.QuestDialogueRowMatch}}},System.Func{System.Threading.CancellationToken,System.Threading.Tasks.Task{System.Collections.Generic.IReadOnlyList{System.ValueTuple{System.UInt32,System.Byte}}}},System.Func{System.UInt32,System.Byte,System.Threading.CancellationToken,System.Nullable{Echoglossian.QuestProgressSnapshot}})">
+        <member name="M:Echoglossian.JapaneseQuestSourceTextProvider.#ctor(Echoglossian.IJapaneseQuestDataReader,System.Func{System.String,System.Threading.CancellationToken,System.Threading.Tasks.Task{System.Collections.Generic.IReadOnlyList{Echoglossian.QuestDialogueRowMatch}}},System.Func{System.Threading.CancellationToken,System.Threading.Tasks.Task{System.Collections.Generic.IReadOnlyList{System.ValueTuple{System.UInt32,System.Byte}}}},System.Func{System.UInt32,System.Byte,System.Threading.CancellationToken,System.Nullable{Echoglossian.QuestProgressSnapshot}},System.Func{System.String,System.Nullable{System.UInt32}})">
             <summary>
                 Initializes a new instance of the <see cref="T:Echoglossian.JapaneseQuestSourceTextProvider" /> class.
             </summary>
@@ -34721,6 +34805,7 @@
             <param name="findDialogueRowsAsync">Matches a visible dialogue line to quest rows.</param>
             <param name="captureAcceptedQuestsAsync">Captures accepted quests and sequences.</param>
             <param name="resolveClientQuestProgress">Resolves a client-language quest snapshot.</param>
+            <param name="resolveQuestIdByTitle">Resolves a visible client-language quest title to its id.</param>
         </member>
         <member name="M:Echoglossian.JapaneseQuestSourceTextProvider.TryResolveQuestDialogueAsync(System.String,System.Threading.CancellationToken)">
             <inheritdoc />

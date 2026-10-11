@@ -493,7 +493,7 @@ internal sealed class JournalResultHandler : QuestAddonHandlerBase
   {
     this.QueueTranslation(
         cacheKey,
-        () => this.Translate(questNameText, sourceLanguage),
+        () => this.TranslatePreferringAlternateSource(questNameText, sourceLanguage, null),
         translatedNameText =>
         {
           if (!IsTranslatedPayloadReady(translatedNameText))

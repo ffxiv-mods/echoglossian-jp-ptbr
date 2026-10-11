@@ -90,6 +90,25 @@ public class JapaneseQuestSourceTextProviderTests
     }
 
     /// <summary>
+    ///     A visible title of a quest that is not accepted resolves through
+    ///     the title index.
+    /// </summary>
+    [Fact]
+    public async Task TryResolveQuestTextAsync_TitleOfUnacceptedQuest_UsesTitleIndex()
+    {
+        var provider = new JapaneseQuestSourceTextProvider(
+            new FakeReader(),
+            (_, _) => Task.FromResult<IReadOnlyList<QuestDialogueRowMatch>>([]),
+            _ => Task.FromResult<IReadOnlyList<(uint QuestId, byte QuestSequence)>>([]),
+            (_, _, _) => null,
+            title => title == "For Better or Worse" ? 68799u : null);
+
+        var result = await provider.TryResolveQuestTextAsync("For Better or Worse", null);
+
+        Assert.Equal("良くも悪くも", result);
+    }
+
+    /// <summary>
     ///     A text that no accepted quest owns returns null.
     /// </summary>
     [Fact]

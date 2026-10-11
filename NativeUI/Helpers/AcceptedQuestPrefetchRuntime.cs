@@ -526,6 +526,11 @@ public partial class Echoglossian
         workItem.GameVersion);
     var currentQuestSequenceText = questCanonicalData.CurrentSequenceText;
     var translationService = TranslationService;
+    var japaneseQuestText = this.CaptureJapaneseQuestPrefetchText(
+        questProgressSnapshot,
+        workItem.SourceLanguage,
+        workItem.Scope,
+        workItem.GenerationCancellationToken);
     var nameDispatchResult = RunAcceptedQuestPrefetchOperationEntry(
         questCanonicalData,
         workItem.SourceLanguage,
@@ -533,11 +538,19 @@ public partial class Echoglossian
         this.TryGetQueuedTranslation,
         this.QueueTranslation,
         (sourceText, capturedSource, targetLanguage, originContext) =>
-            translationService.Translate(
+            SourceTextTranslation.TranslatePreferringAlternate(
                 sourceText,
                 capturedSource,
+                string.Equals(sourceText, questProgressSnapshot.QuestName, StringComparison.Ordinal)
+                    ? japaneseQuestText?.QuestName
+                    : null,
+                japaneseQuestText?.Source,
                 targetLanguage,
-                originContext: originContext),
+                (text, source) => translationService.Translate(
+                    text,
+                    source,
+                    targetLanguage,
+                    originContext: originContext)),
         this.FindQuestPlate,
         this.FindQuestPlateByName,
         questPlate =>
@@ -599,25 +612,29 @@ public partial class Echoglossian
         currentQuestSequenceText,
         existingQuestPlate,
         workItem.SourceLanguage,
-        workItem.Scope);
+        workItem.Scope,
+        japaneseQuestText);
     this.PrefetchAcceptedQuestSummaries(
         questProgressSnapshot,
         currentQuestSequenceText,
         existingQuestPlate,
         workItem.SourceLanguage,
-        workItem.Scope);
+        workItem.Scope,
+        japaneseQuestText);
     this.PrefetchAcceptedQuestObjectives(
         questProgressSnapshot,
         currentQuestSequenceText,
         existingQuestPlate,
         workItem.SourceLanguage,
-        workItem.Scope);
+        workItem.Scope,
+        japaneseQuestText);
     this.PrefetchAcceptedQuestSystemRows(
         questProgressSnapshot,
         currentQuestSequenceText,
         existingQuestPlate,
         workItem.SourceLanguage,
-        workItem.Scope);
+        workItem.Scope,
+        japaneseQuestText);
   }
 
   /// <summary>
@@ -629,12 +646,14 @@ public partial class Echoglossian
   /// <param name="existingQuestPlate">The existing persisted quest plate, if any.</param>
   /// <param name="sourceLanguage">The resolved source language.</param>
   /// <param name="scope">The immutable operation reuse scope.</param>
+  /// <param name="japaneseQuestText">The optional Japanese quest rows.</param>
   private void PrefetchAcceptedQuestCurrentMessage(
       QuestProgressSnapshot questProgressSnapshot,
       string currentQuestSequenceText,
       QuestPlate existingQuestPlate,
       SourceClientLanguage sourceLanguage,
-      TranslationReuseScope scope)
+      TranslationReuseScope scope,
+      JapaneseQuestPrefetchText? japaneseQuestText)
   {
     if (string.IsNullOrWhiteSpace(currentQuestSequenceText) ||
         !string.IsNullOrWhiteSpace(existingQuestPlate.TranslatedQuestMessage))
@@ -656,11 +675,15 @@ public partial class Echoglossian
         scope,
         this.TryGetQueuedTranslation,
         this.QueueTranslation,
-        () => translationService.Translate(
+        () => TranslateAcceptedQuestRow(
+            translationService,
             currentQuestSequenceText,
+            japaneseQuestText?.FindRow(
+                FindCurrentSequenceKey(questProgressSnapshot, currentQuestSequenceText)),
             sourceLanguage,
+            japaneseQuestText?.Source,
             scope.TargetLanguageCode,
-            originContext: BuildAcceptedQuestOriginContext(
+            BuildAcceptedQuestOriginContext(
                 questProgressSnapshot,
                 "Message")),
         (translatedQuestMessage, capturedScope, fromCache) =>
@@ -698,12 +721,14 @@ public partial class Echoglossian
   /// <param name="existingQuestPlate">The existing persisted quest plate, if any.</param>
   /// <param name="sourceLanguage">The resolved source language.</param>
   /// <param name="scope">The immutable operation reuse scope.</param>
+  /// <param name="japaneseQuestText">The optional Japanese quest rows.</param>
   private void PrefetchAcceptedQuestSummaries(
       QuestProgressSnapshot questProgressSnapshot,
       string currentQuestSequenceText,
       QuestPlate existingQuestPlate,
       SourceClientLanguage sourceLanguage,
-      TranslationReuseScope scope)
+      TranslationReuseScope scope,
+      JapaneseQuestPrefetchText? japaneseQuestText)
   {
     foreach (var questSequenceEntry in questProgressSnapshot.QuestSeqTexts)
     {
@@ -734,11 +759,14 @@ public partial class Echoglossian
           scope,
           this.TryGetQueuedTranslation,
           this.QueueTranslation,
-          () => translationService.Translate(
+          () => TranslateAcceptedQuestRow(
+              translationService,
               questSequenceEntry.Text,
+              japaneseQuestText?.FindRow(questSequenceEntry.KeyText),
               sourceLanguage,
+              japaneseQuestText?.Source,
               scope.TargetLanguageCode,
-              originContext: BuildAcceptedQuestOriginContext(
+              BuildAcceptedQuestOriginContext(
                   questProgressSnapshot,
                   "Summary")),
           (translatedSummaryTextValue, capturedScope, fromCache) =>
@@ -781,12 +809,14 @@ public partial class Echoglossian
   /// <param name="existingQuestPlate">The existing persisted quest plate, if any.</param>
   /// <param name="sourceLanguage">The resolved source language.</param>
   /// <param name="scope">The immutable operation reuse scope.</param>
+  /// <param name="japaneseQuestText">The optional Japanese quest rows.</param>
   private void PrefetchAcceptedQuestObjectives(
       QuestProgressSnapshot questProgressSnapshot,
       string currentQuestSequenceText,
       QuestPlate existingQuestPlate,
       SourceClientLanguage sourceLanguage,
-      TranslationReuseScope scope)
+      TranslationReuseScope scope,
+      JapaneseQuestPrefetchText? japaneseQuestText)
   {
     foreach (var questStep in questProgressSnapshot.QuestSteps)
     {
@@ -817,11 +847,14 @@ public partial class Echoglossian
           scope,
           this.TryGetQueuedTranslation,
           this.QueueTranslation,
-          () => translationService.Translate(
+          () => TranslateAcceptedQuestRow(
+              translationService,
               questStep.Text,
+              japaneseQuestText?.FindRow(questStep.KeyText),
               sourceLanguage,
+              japaneseQuestText?.Source,
               scope.TargetLanguageCode,
-              originContext: BuildAcceptedQuestOriginContext(
+              BuildAcceptedQuestOriginContext(
                   questProgressSnapshot,
                   "Objective")),
           (translatedObjectiveTextValue, capturedScope, fromCache) =>
@@ -864,12 +897,14 @@ public partial class Echoglossian
   /// <param name="existingQuestPlate">The existing persisted quest plate, if any.</param>
   /// <param name="sourceLanguage">The resolved source language.</param>
   /// <param name="scope">The immutable operation reuse scope.</param>
+  /// <param name="japaneseQuestText">The optional Japanese quest rows.</param>
   private void PrefetchAcceptedQuestSystemRows(
       QuestProgressSnapshot questProgressSnapshot,
       string currentQuestSequenceText,
       QuestPlate existingQuestPlate,
       SourceClientLanguage sourceLanguage,
-      TranslationReuseScope scope)
+      TranslationReuseScope scope,
+      JapaneseQuestPrefetchText? japaneseQuestText)
   {
     foreach (var questSystemText in questProgressSnapshot.QuestSystemTexts)
     {
@@ -900,11 +935,14 @@ public partial class Echoglossian
           scope,
           this.TryGetQueuedTranslation,
           this.QueueTranslation,
-          () => translationService.Translate(
+          () => TranslateAcceptedQuestRow(
+              translationService,
               questSystemText.Text,
+              japaneseQuestText?.FindRow(questSystemText.KeyText),
               sourceLanguage,
+              japaneseQuestText?.Source,
               scope.TargetLanguageCode,
-              originContext: BuildAcceptedQuestOriginContext(
+              BuildAcceptedQuestOriginContext(
                   questProgressSnapshot,
                   "System")),
           (translatedSystemTextValue, capturedScope, fromCache) =>
@@ -1142,6 +1180,73 @@ public partial class Echoglossian
   /// <param name="questProgressSnapshot">The accepted-quest progress snapshot.</param>
   /// <param name="fieldName">The translated field name.</param>
   /// <returns>The diagnostic surface identity.</returns>
+  private static string TranslateAcceptedQuestRow(
+      TranslationService translationService,
+      string clientText,
+      string? japaneseText,
+      SourceClientLanguage clientSource,
+      SourceClientLanguage? japaneseSource,
+      string targetLanguage,
+      string originContext)
+  {
+    return SourceTextTranslation.TranslatePreferringAlternate(
+        clientText,
+        clientSource,
+        japaneseText,
+        japaneseSource,
+        targetLanguage,
+        (text, source) => translationService.Translate(
+            text,
+            source,
+            targetLanguage,
+            originContext: originContext));
+  }
+
+  private static string? FindCurrentSequenceKey(
+      QuestProgressSnapshot questProgressSnapshot,
+      string currentQuestSequenceText)
+  {
+    return questProgressSnapshot.QuestSeqTexts
+        .FirstOrDefault(entry => string.Equals(
+            entry.Text,
+            currentQuestSequenceText,
+            StringComparison.Ordinal))
+        .KeyText;
+  }
+
+  /// <summary>
+  ///     Reads the Japanese rows and title of one accepted quest when the
+  ///     Japanese source-text option applies to the captured scope.
+  /// </summary>
+  /// <param name="questProgressSnapshot">The resolved client-language snapshot.</param>
+  /// <param name="sourceLanguage">The captured client source language.</param>
+  /// <param name="scope">The immutable operation reuse scope.</param>
+  /// <param name="cancellationToken">The generation cancellation token.</param>
+  /// <returns>The Japanese quest texts, or <see langword="null" />.</returns>
+  private JapaneseQuestPrefetchText? CaptureJapaneseQuestPrefetchText(
+      QuestProgressSnapshot questProgressSnapshot,
+      SourceClientLanguage sourceLanguage,
+      TranslationReuseScope scope,
+      CancellationToken cancellationToken)
+  {
+    if (!this.SourceTextLanguagePolicy.TryGetAlternateSource(
+            sourceLanguage,
+            scope.TargetLanguageCode,
+            out var japaneseSource))
+    {
+      return null;
+    }
+
+    var rows = this.JapaneseQuestSourceText.ReadQuestRows(
+        questProgressSnapshot.QuestSheetName,
+        cancellationToken);
+    var questName = this.JapaneseQuestSourceText.TryGetQuestName(
+        questProgressSnapshot.QuestId);
+    return rows.Count == 0 && string.IsNullOrWhiteSpace(questName)
+        ? null
+        : new JapaneseQuestPrefetchText(japaneseSource, rows, questName);
+  }
+
   private static string BuildAcceptedQuestOriginContext(
       QuestProgressSnapshot questProgressSnapshot,
       string fieldName)

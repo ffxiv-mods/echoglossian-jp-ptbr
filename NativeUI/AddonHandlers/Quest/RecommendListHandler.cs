@@ -524,7 +524,7 @@ internal sealed class RecommendListHandler : QuestAddonHandlerBase
 
     this.QueueTranslation(
         BuildRecommendListCacheKey(questNameText),
-        () => this.Translate(questNameText, sourceLanguage),
+        () => this.TranslatePreferringAlternateSource(questNameText, sourceLanguage, null),
         translatedNameText =>
         {
           if (!IsTranslatedPayloadReady(translatedNameText))
