@@ -10,7 +10,9 @@
   <PropertyGroup>
     <TargetFramework>net10.0-windows</TargetFramework>
     <RuntimeIdentifier>win-x64</RuntimeIdentifier>
-    <AssemblyName>Echoglossian</AssemblyName>
+    <AssemblyName>EchoglossianJP</AssemblyName>
+    <!-- Fork: keep the original root namespace so embedded resource names (Echoglossian.Properties.Resources) stay valid. -->
+    <RootNamespace>Echoglossian</RootNamespace>
     <Platforms>x64</Platforms>
     <Authors>lokinmodar</Authors>
     <NeutralLanguage>en</NeutralLanguage>
@@ -34,13 +36,13 @@
     <Company>lokinmodar</Company>
     <Description>Final Fantasy XIV game text translator</Description>
     <Copyright>lokinmodar - 2021-2026</Copyright>
-    <PackageProjectUrl>https://github.com/lokinmodar/Echoglossian/</PackageProjectUrl>
+    <PackageProjectUrl>https://github.com/ffxiv-mods/echoglossian-jp-ptbr/</PackageProjectUrl>
     <Nullable>enable</Nullable>
     <ApplicationIcon>minfilia.ico</ApplicationIcon>
     <PackageLicenseExpression>Creative Commons Attribution-NonCommercial-NoDerivatives 4.0 International Public License</PackageLicenseExpression>
     <PackageIcon>logo.png</PackageIcon>
     <PackageIconUrl>https://github.com/lokinmodar/Echoglossian/blob/APIv4/images/logo.png?raw=true</PackageIconUrl>
-    <RepositoryUrl>https://github.com/lokinmodar/Echoglossian</RepositoryUrl>
+    <RepositoryUrl>https://github.com/ffxiv-mods/echoglossian-jp-ptbr</RepositoryUrl>
     <PackageTags>ffxiv, translation, dll, plugin, XIVLauncher</PackageTags>
     <DocumentationFile>$(OutputPath)$(AssemblyName).xml</DocumentationFile>
     <ImplicitUsings>enable</ImplicitUsings>

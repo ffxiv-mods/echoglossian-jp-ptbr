@@ -32,11 +32,11 @@ public partial class Echoglossian : IDalamudPlugin
   /// <summary>
   /// The command used to invoke the plugin config UI.
   /// </summary>
-  private const string SlashCommand = "/eglo";
+  private const string SlashCommand = "/eglojp";
 
-  private const string DBManagerWindowCommand = "/eglodbmanager";
+  private const string DBManagerWindowCommand = "/eglojpdbmanager";
 
-  private const string TranslatorDebuggerWindowCommand = "/eglotranslatordebugger";
+  private const string TranslatorDebuggerWindowCommand = "/eglojptranslatordebugger";
 
 #if DEBUG
   private const string AddonProbeCommand = "/egloaddonprobe";
