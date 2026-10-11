@@ -1,0 +1,32 @@
+[
+  {
+    "Author": "lokinmodar (fork: ffxiv-mods)",
+    "Name": "Echoglossian JP→PT-BR",
+    "InternalName": "EchoglossianJP",
+    "AssemblyVersion": "4.2601.1011.2050",
+    "TestingAssemblyVersion": "4.2601.1011.2050",
+    "Description": "Fork of Echoglossian (by lokinmodar) that can translate from the Japanese original text while the game client runs in English. Use /eglojp to open the configuration.",
+    "Punchline": "Echoglossian fork: translate from the Japanese original into PT-BR with an English client.",
+    "ApplicableVersion": "any",
+    "RepoUrl": "https://github.com/ffxiv-mods/echoglossian-jp-ptbr",
+    "Tags": [
+      "ffxiv",
+      "Dalamud",
+      "plugin",
+      "translation",
+      "UI",
+      "Utility",
+      "japanese"
+    ],
+    "DalamudApiLevel": 15,
+    "TestingDalamudApiLevel": 15,
+    "LoadPriority": 0,
+    "IconUrl": "https://raw.githubusercontent.com/ffxiv-mods/echoglossian-jp-ptbr/v4-series/images/icon.png",
+    "IsHide": false,
+    "IsTestingExclusive": false,
+    "DownloadLinkInstall": "https://github.com/ffxiv-mods/echoglossian-jp-ptbr/releases/download/v4.2601.1011.2050/latest.zip",
+    "DownloadLinkUpdate": "https://github.com/ffxiv-mods/echoglossian-jp-ptbr/releases/download/v4.2601.1011.2050/latest.zip",
+    "DownloadLinkTesting": "https://github.com/ffxiv-mods/echoglossian-jp-ptbr/releases/download/v4.2601.1011.2050/latest.zip",
+    "LastUpdate": 1791751914
+  }
+]
