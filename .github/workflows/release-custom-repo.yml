@@ -1,0 +1,159 @@
+# Builds the EchoglossianJP fork and, on manual dispatch, publishes a GitHub
+# release plus the repo.json consumed by Dalamud's "Custom Plugin Repositories".
+#
+# - push: builds and uploads latest.zip as a workflow artifact only.
+# - workflow_dispatch: builds, creates the release v<version> with latest.zip,
+#   and commits repo.json to the dispatched branch. Add this URL in Dalamud:
+#   https://raw.githubusercontent.com/<owner>/<repo>/<branch>/repo.json
+name: Build and publish custom repo
+
+on:
+  push:
+    branches:
+      - v4-series
+      - feature/jp-source-text
+    paths-ignore:
+      - repo.json
+      - docs/**
+      - Echoglossian.Docs/**
+  workflow_dispatch:
+    inputs:
+      dalamud_channel:
+        description: Dalamud reference assemblies channel
+        type: choice
+        options:
+          - stable
+          - stg
+        default: stable
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-custom-repo-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: windows-latest
+    env:
+      DOTNET_NOLOGO: true
+      DOTNET_CLI_TELEMETRY_OPTOUT: true
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      - name: Download Dalamud reference assemblies
+        shell: pwsh
+        run: |
+          $channel = '${{ github.event.inputs.dalamud_channel }}'
+          $url = if ($channel -eq 'stg') {
+            'https://goatcorp.github.io/dalamud-distrib/stg/latest.zip'
+          } else {
+            'https://goatcorp.github.io/dalamud-distrib/latest.zip'
+          }
+          $libPath = Join-Path $env:APPDATA 'XIVLauncher\addon\Hooks\dev'
+          New-Item -ItemType Directory -Force -Path $libPath | Out-Null
+          Invoke-WebRequest -Uri $url -OutFile dalamud.zip
+          Expand-Archive -Force dalamud.zip $libPath
+          "DALAMUD_LIB_PATH=$libPath\" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+
+      - name: Compute version
+        id: version
+        shell: pwsh
+        run: |
+          $now = [DateTime]::UtcNow
+          "year=$($now.ToString('yy'))" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+          "patch=$($now.ToString('MMdd'))" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+          "revision=$($now.ToString('HHmm'))" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+
+      - name: Restore
+        shell: pwsh
+        run: dotnet restore Echoglossian.csproj -p:DalamudLibPath="$env:DALAMUD_LIB_PATH"
+
+      - name: Build Release
+        shell: pwsh
+        run: >
+          dotnet build Echoglossian.csproj -c Release --no-restore
+          -p:DalamudLibPath="$env:DALAMUD_LIB_PATH"
+          -p:VersionYear=${{ steps.version.outputs.year }}
+          -p:VersionPatch=${{ steps.version.outputs.patch }}
+          -p:VersionRevision=${{ steps.version.outputs.revision }}
+
+      - name: Locate package
+        id: package
+        shell: pwsh
+        run: |
+          $zip = Get-ChildItem -Path bin -Recurse -Filter latest.zip |
+            Where-Object { $_.FullName -match '\\Release\\' } |
+            Select-Object -First 1
+          if (-not $zip) { throw 'latest.zip was not produced by DalamudPackager.' }
+          $manifestPath = Join-Path $zip.DirectoryName 'EchoglossianJP.json'
+          if (-not (Test-Path $manifestPath)) { throw "Manifest not found: $manifestPath" }
+          $manifest = Get-Content $manifestPath -Raw -Encoding utf8 | ConvertFrom-Json
+          "zip=$($zip.FullName)" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+          "manifest=$manifestPath" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+          "assembly_version=$($manifest.AssemblyVersion)" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: EchoglossianJP-${{ steps.package.outputs.assembly_version }}
+          path: ${{ steps.package.outputs.zip }}
+
+      - name: Create GitHub release
+        if: github.event_name == 'workflow_dispatch'
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $tag = 'v${{ steps.package.outputs.assembly_version }}'
+          gh release create $tag '${{ steps.package.outputs.zip }}' `
+            --target '${{ github.sha }}' `
+            --title "EchoglossianJP $tag" `
+            --notes "Build of ${{ github.ref_name }} at ${{ github.sha }}."
+
+      - name: Update repo.json
+        if: github.event_name == 'workflow_dispatch'
+        shell: pwsh
+        run: |
+          $manifest = Get-Content '${{ steps.package.outputs.manifest }}' -Raw -Encoding utf8 | ConvertFrom-Json
+          $tag = 'v${{ steps.package.outputs.assembly_version }}'
+          $download = "https://github.com/${{ github.repository }}/releases/download/$tag/latest.zip"
+          $entry = [ordered]@{
+            Author = $manifest.Author
+            Name = $manifest.Name
+            InternalName = $manifest.InternalName
+            AssemblyVersion = $manifest.AssemblyVersion
+            TestingAssemblyVersion = $manifest.AssemblyVersion
+            Description = $manifest.Description
+            Punchline = $manifest.Punchline
+            ApplicableVersion = $manifest.ApplicableVersion
+            RepoUrl = $manifest.RepoUrl
+            Tags = $manifest.Tags
+            DalamudApiLevel = $manifest.DalamudApiLevel
+            TestingDalamudApiLevel = $manifest.DalamudApiLevel
+            LoadPriority = $manifest.LoadPriority
+            IconUrl = $manifest.IconUrl
+            IsHide = $false
+            IsTestingExclusive = $false
+            DownloadLinkInstall = $download
+            DownloadLinkUpdate = $download
+            DownloadLinkTesting = $download
+            LastUpdate = [DateTimeOffset]::UtcNow.ToUnixTimeSeconds()
+          }
+          $json = ConvertTo-Json -InputObject @($entry) -Depth 5
+          [System.IO.File]::WriteAllText((Join-Path $PWD 'repo.json'), $json + "`n", [System.Text.UTF8Encoding]::new($false))
+
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add repo.json
+          git commit -m "chore(repo): publish $tag to custom repo [skip ci]"
+          git push origin 'HEAD:${{ github.ref_name }}'
+          "Custom repo URL: https://raw.githubusercontent.com/${{ github.repository }}/${{ github.ref_name }}/repo.json" |
+            Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append -Encoding utf8
